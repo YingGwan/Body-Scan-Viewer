@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "version__comment": "Schema version for render_config.json. Must be 1.",
+
+  "viewer": {
+    "up_dir": "y_up",
+    "up_dir__comment": "Polyscope up direction enum. Must be one of x_up, neg_x_up, y_up, neg_y_up, z_up, neg_z_up.",
+    "ground_plane_mode": "none",
+    "ground_plane_mode__comment": "Polyscope ground plane mode. Must be one of none, tile, tile_reflection, shadow_only.",
+    "transparency_mode": "pretty",
+    "transparency_mode__comment": "Polyscope transparency mode. Must be one of none, simple, pretty.",
+    "transparency_render_passes": 2,
+    "transparency_render_passes__comment": "Render pass count used when transparency_mode is pretty. Must be an integer >= 1."
+  },
+  "viewer__comment": "Global Polyscope viewer defaults applied at startup.",
+
+  "render": {
+    "sizestream_mesh": {
+      "color": [0.8, 0.8, 0.8],
+      "color__comment": "Fallback RGB color for the SizeStream mesh.",
+      "enabled": true,
+      "enabled__comment": "Whether the SizeStream mesh should be visible immediately after loading.",
+      "transparency": 0.3,
+      "transparency__comment": "Mesh transparency in the range [0, 1].",
+      "smooth_shade": true,
+      "smooth_shade__comment": "Whether to enable smooth shading for the SizeStream mesh."
+    },
+    "sizestream_mesh__comment": "Render settings for the SizeStream mesh.",
+    "sizestream_landmarks": {
+      "color": [1.0, 0.3, 0.1],
+      "color__comment": "RGB color for SizeStream landmarks.",
+      "enabled": true,
+      "enabled__comment": "Whether SizeStream landmarks should be visible immediately after loading.",
+      "radius": 0.004,
+      "radius__comment": "Relative point radius for SizeStream landmarks."
+    },
+    "sizestream_landmarks__comment": "Render settings for the SizeStream landmarks.",
+    "registered_mesh": {
+      "color": [0.2, 0.85, 0.3],
+      "color__comment": "Fallback RGB color for the registered CAESAR mesh when PLY vertex colors are not available.",
+      "enabled": true,
+      "enabled__comment": "Whether the registered CAESAR mesh should be visible after ICP registration.",
+      "smooth_shade": true,
+      "smooth_shade__comment": "Whether to enable smooth shading for the registered CAESAR mesh."
+    },
+    "registered_mesh__comment": "Render settings for the registered CAESAR mesh.",
+    "registered_landmarks": {
+      "color": [1.0, 0.2, 0.2],
+      "color__comment": "RGB color for registered CAESAR landmarks.",
+      "enabled": false,
+      "enabled__comment": "Whether registered CAESAR landmarks should be visible after ICP registration.",
+      "radius": 0.006,
+      "radius__comment": "Relative point radius for registered CAESAR landmarks."
+    },
+    "registered_landmarks__comment": "Render settings for registered CAESAR landmarks.",
+    "caesar_mesh": {
+      "color": [1.0, 0.55, 0.1],
+      "color__comment": "Fallback RGB color for the raw CAESAR mesh when PLY vertex colors are not available.",
+      "enabled": false,
+      "enabled__comment": "Whether the raw CAESAR mesh should be visible immediately after loading.",
+      "smooth_shade": true,
+      "smooth_shade__comment": "Whether to enable smooth shading for the raw CAESAR mesh."
+    },
+    "caesar_mesh__comment": "Render settings for the raw CAESAR mesh.",
+    "caesar_landmarks": {
+      "color": [1.0, 0.55, 0.1],
+      "color__comment": "RGB color for raw CAESAR landmarks.",
+      "enabled": false,
+      "enabled__comment": "Whether raw CAESAR landmarks should be visible immediately after loading.",
+      "radius": 0.006,
+      "radius__comment": "Relative point radius for raw CAESAR landmarks."
+    },
+    "caesar_landmarks__comment": "Render settings for raw CAESAR landmarks.",
+    "landmark_errors": {
+      "color": [1.0, 0.3, 0.2],
+      "color__comment": "RGB color for landmark error vectors.",
+      "radius": 0.001,
+      "radius__comment": "Curve radius for landmark error vectors."
+    },
+    "landmark_errors__comment": "Render settings for landmark error vectors.",
+    "geodesic_path": {
+      "color": [0.576, 0.086, 0.086],
+      "color__comment": "RGB color for the geodesic path.",
+      "radius": 0.00115,
+      "radius__comment": "Curve radius for the geodesic path."
+    },
+    "geodesic_path__comment": "Render settings for geodesic curves.",
+    "geodesic_endpoints": {
+      "radius": 0.008,
+      "radius__comment": "Point radius for geodesic endpoint previews.",
+      "start_color": [1.0, 0.2, 0.2],
+      "start_color__comment": "RGB color for the first selected geodesic endpoint.",
+      "end_color": [0.05, 0.35, 0.18],
+      "end_color__comment": "RGB color for the second selected geodesic endpoint."
+    },
+    "geodesic_endpoints__comment": "Render settings for geodesic endpoint previews."
+  },
+  "render__comment": "Rendering defaults for meshes, landmarks, error vectors, and geodesic previews."
+}

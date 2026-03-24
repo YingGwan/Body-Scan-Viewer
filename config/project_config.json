@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "version__comment": "Schema version for project_config.json. Must be 1.",
+
+  "paths": {
+    "data_root": "TODO/SORO MADE Garments",
+    "data_root__comment": "Project-relative root folder containing the CAESAR and SIZE_STREAM dataset folders.",
+    "size_stream_dir": "TODO/SORO MADE Garments/SIZE_STREAM",
+    "size_stream_dir__comment": "Folder containing SS_OUT_*.obj meshes and the SizeStream XLSX landmark workbook.",
+    "caesar_dir": "TODO/SORO MADE Garments/CAESAR",
+    "caesar_dir__comment": "Folder containing CAESAR csr*.ply meshes and optional csr*.lnd landmark files.",
+    "processed_dir": "processed",
+    "processed_dir__comment": "Folder where registered meshes and transforms are saved."
+  },
+  "paths__comment": "Input and output directory settings. Edit these for each new project.",
+
+  "registration": {
+    "quality": {
+      "fitness_fail_below": 0.1,
+      "fitness_fail_below__comment": "Registrations below this fitness are marked as failed.",
+      "excellent_rmse_below_mm": 5.0,
+      "excellent_rmse_below_mm__comment": "RMSE threshold, in millimeters, for the Excellent quality label.",
+      "acceptable_rmse_below_mm": 15.0,
+      "acceptable_rmse_below_mm__comment": "RMSE threshold, in millimeters, for the Acceptable quality label."
+    },
+    "quality__comment": "Quality thresholds used when labeling registration results.",
+    "coarse_icp": {
+      "max_correspondence_distance_mm": 150.0,
+      "max_correspondence_distance_mm__comment": "Maximum correspondence distance, in millimeters, for the coarse ICP stage.",
+      "max_iteration": 50,
+      "max_iteration__comment": "Maximum number of coarse ICP iterations.",
+      "relative_fitness": 0.0001,
+      "relative_fitness__comment": "Early-stop threshold for relative fitness changes in coarse ICP.",
+      "relative_rmse": 0.0001,
+      "relative_rmse__comment": "Early-stop threshold for relative RMSE changes in coarse ICP."
+    },
+    "coarse_icp__comment": "Coarse ICP stage parameters.",
+    "fine_icp": {
+      "max_correspondence_distance_mm": 25.0,
+      "max_correspondence_distance_mm__comment": "Maximum correspondence distance, in millimeters, for the fine ICP stage.",
+      "max_iteration": 100,
+      "max_iteration__comment": "Maximum number of fine ICP iterations.",
+      "relative_fitness": 0.000001,
+      "relative_fitness__comment": "Early-stop threshold for relative fitness changes in fine ICP.",
+      "relative_rmse": 0.000001,
+      "relative_rmse__comment": "Early-stop threshold for relative RMSE changes in fine ICP."
+    },
+    "fine_icp__comment": "Fine ICP stage parameters.",
+    "target_normals": {
+      "radius_mm": 30.0,
+      "radius_mm__comment": "Neighborhood radius, in millimeters, used to estimate target normals for point-to-plane ICP.",
+      "max_nn": 30,
+      "max_nn__comment": "Maximum number of neighbors used to estimate target normals."
+    },
+    "target_normals__comment": "Normal estimation settings for the SizeStream target point cloud.",
+    "sampling": {
+      "max_points": 30000,
+      "max_points__comment": "Maximum number of mesh vertices sampled into each ICP point cloud.",
+      "random_seed": 42,
+      "random_seed__comment": "Random seed used for reproducible downsampling."
+    },
+    "sampling__comment": "Sampling settings for the ICP point clouds."
+  },
+  "registration__comment": "ICP and quality parameters. Tune these when switching datasets.",
+
+  "distance": {
+    "default_color_max_mm": 30.0,
+    "default_color_max_mm__comment": "Default upper bound for the landmark distance heatmap color scale.",
+    "slider_min_mm": 1.0,
+    "slider_min_mm__comment": "Minimum value allowed by the distance color scale slider.",
+    "slider_max_mm": 100.0,
+    "slider_max_mm__comment": "Maximum value allowed by the distance color scale slider."
+  },
+  "distance__comment": "Distance heatmap defaults and slider limits."
+}

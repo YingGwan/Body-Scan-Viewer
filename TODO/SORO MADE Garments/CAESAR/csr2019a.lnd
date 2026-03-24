@@ -1,0 +1,82 @@
+SUBJECT_ID = vstemplate.ply
+SCAN_TYPE  = NO TYPE
+STUDY_NAME = * * *  NO STUDY  * * *
+LAND_STUDY = New Study
+STD_LAND = 0
+AUX_LAND = 73
+STANDARD =
+AUX =
+ 1   0   1   18.64   18.19    4.06  522.00 Sellion
+ 2   0   2   37.39    9.32   36.21  492.00 Rt. Infraorbitale
+ 3   0   3   51.68   49.88  -13.51  488.00 Lt. Infraorbitale
+ 4   0   4   23.63   21.81    9.10  432.00 Supramenton
+ 5   0   5  122.77   45.43  114.06  500.00 Rt. Tragion
+ 6   0   6  110.64   49.44   98.98  438.00 Rt. Gonion
+ 7   0   7  130.36  130.16    7.16  498.00 Lt. Tragion
+ 8   0   8  120.27  119.59   12.73  444.00 Lt. Gonion
+ 9   0   9  212.75  169.19  128.98  478.00 Nuchale
+10   0  10   91.17   63.69   65.23  320.00 Rt. Clavicale
+11   0  11   86.14   71.06   48.69  310.00 Suprasternale
+12   0  12   93.34   88.18   30.59  320.00 Lt. Clavicale
+13   0  13   81.96  -49.59   65.25  174.00 Rt. Thelion/Bustpoint
+14   0  14  106.13   61.15  -86.74  180.00 Lt. Thelion/Bustpoint
+15   0  15   18.66   18.21    4.08  120.00 Substernale
+16   0  16   91.23  -17.06   89.62   32.00 Rt. 10th Rib
+17   0  17  117.08  -37.58  110.89 -110.00 Rt. ASIS
+18   0  18  104.63   90.23  -52.98   26.00 Lt. 10th Rib
+19   0  19  136.77  114.62  -74.62 -104.00 Lt. ASIS
+20   0  20  183.04   -8.94  182.82  -18.00 Rt. Iliocristale
+21   0  21  224.65  -16.19  224.07 -142.00 Rt. Trochanterion
+22   0  22  206.59  201.22  -46.81  -32.00 Lt. Iliocristale
+23   0  23  231.59  211.06  -84.31 -164.00 Lt. Trochanterion
+24   0  24  190.17  151.22  115.31  388.00 Cervicale
+25   0  25  184.74  151.64  105.52   40.00 10th Rib Midspine
+26   0  26  233.80  139.09  187.93  -54.00 Rt. PSIS
+27   0  27  234.93  223.00   73.92  -52.00 Lt. PSIS
+28   5 1232  151.67  151.66  105.25   -2.00 Waist, Preferred, Post.
+29   0  29  220.87   20.74  219.89  320.00 Rt. Acromion
+30   0  30  198.83  -14.92  198.27  210.00 Rt. Axilla, Ant
+31   0  31  391.57 -177.12  349.22 -142.00 Rt. Radial Styloid
+32   0  32  278.25   78.59  266.92  200.00 Rt. Axilla, Post.
+33   0  36  317.74  -25.35  316.73   40.00 Rt. Olecranon
+34   0  36  321.18  -52.91  316.79   62.00 Rt. Humeral Lateral Epicn
+35   0  33  283.11   -8.01  283.00   32.00 Rt. Humeral Medial Epicn
+36   0  36  325.45  -61.47  319.59   48.00 Rt. Radiale
+37   0  37  424.38 -207.04  370.45 -214.00 Rt. Metacarpal Phal. II
+38   0  38  476.59 -222.98  421.21 -298.00 Rt. Dactylion
+39   0  39  428.91 -160.25  397.85 -142.00 Rt. Ulnar Styloid
+40   0  40  451.41 -157.44  423.06 -200.00 Rt. Metacarpal-Phal. V
+41   0  41  242.37  236.49  -53.06  330.00 Lt. Acromion
+42   0  42  216.20  195.49  -92.33  218.00 Lt. Axilla, Ant
+43   0   0  323.76  294.73 -290.30 -134.00 Lt. Radial Styloid
+44   0  44  283.04  282.65  -14.86  206.00 Lt. Axilla, Post.
+45   0  45  312.87  292.68 -110.58   48.00 Lt. Olecranon
+46   0  48  326.02  295.48 -137.76   76.00 Lt. Humeral Lateral Epicn
+47   0  47  279.16  262.13  -96.01   40.00 Lt. Humeral Medial Epicn
+48   0  48  329.49  294.86 -147.05   60.00 Lt. Radiale
+49   0   0  374.17  312.36 -325.99 -206.00 Lt. Metacarpal-Phal. II
+50   2 15601  459.24  368.55 -362.26 -274.00 Lt. Dactylion
+51   0  51  425.95  336.04 -261.75 -126.00 Lt. Ulnar Styloid
+52   0  51  465.81  368.73 -284.64 -176.00 Lt. Metacarpal-Phal. V
+53   0  53  244.38  110.68  217.88 -556.00 Rt. Knee Crease
+54   0  54  218.78   39.96  215.10 -548.00 Rt. Femoral Lateral Epicn 
+55   1 8207  566.11  125.62  129.01 -552.00 Rt. Femoral Medial Epicn
+56   0  56  199.14  -26.51  197.37 -980.00 Rt. Metatarsal-Phal. V
+57   0  57  233.24   80.79  218.80 -934.00 Rt. Lateral Malleolus
+58   0  58  181.57   97.50  153.17 -922.00 Rt. Medial Malleolus
+59   0  59  186.82   99.30  158.24 -946.00 Rt. Sphyrion
+60   0  60  105.58   -9.22  105.18 -978.00 Rt. Metatarsal-Phal. I
+61   0  61  253.68  134.01  215.39 -968.00 Rt. Calcaneous, Post.
+62   0  62  146.71  -81.34  122.10 -990.00 Rt. Digit II
+63   0  63  235.24  228.73   54.94 -558.00 Lt. Knee Crease
+64   0  64  214.08  213.78  -11.40 -558.00 Lt. Femoral Lateral Epicn 
+65   0  65  162.17  141.91   78.48 -566.00 Lt. Femoral Medial Epicn
+66   0  66  198.94  182.62  -78.90 -976.00 Lt. Metatarsal-Phal. V
+67   0  67  227.86  227.20   17.32 -932.00 Lt. Lateral Malleolus
+68   0  68  175.82  168.74   49.38 -924.00 Lt. Medial Malleolus
+69   0  68  176.78  169.75   49.35 -942.00 Lt. Sphyrion
+70   0  70  107.31   97.54  -44.74 -976.00 Lt. Metatarsal-Phal. I
+71   0  71  242.59  231.81   71.50 -976.00 Lt. Calcaneous, Post.
+72   0 560  998.97   99.56 -119.03 -994.00 Lt. Digit II
+73   0   0     0.0  97.435   69.88    -238 Crotch
+END =
