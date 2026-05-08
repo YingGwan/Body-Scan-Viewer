@@ -113,10 +113,13 @@ def test_init_contour_z_extremum_min(shared_mesh_and_landmarks):
     assert pt[2] < lms["ShoulderLeft"][2]
 
 
-def test_init_contour_z_extremum_none_mesh():
+def test_init_contour_z_extremum_no_intersection():
     from derived_landmarks import init_contour_z_extremum
-    mesh = trimesh.Trimesh(vertices=[[0,0,0],[1,0,0],[0,1,0]], faces=[[0,1,2]])
-    lms = {"A": np.array([100.0, 100.0, 100.0]), "B": np.array([200.0, 200.0, 200.0])}
+    mesh = trimesh.Trimesh(
+        vertices=[[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        faces=[[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]],
+    )
+    lms = {"A": np.array([500.0, 500.0, 500.0]), "B": np.array([500.0, 600.0, 500.0])}
     params = {"extremum": "max", "plane_landmarks": ["A", "B"]}
     with pytest.raises(ValueError, match="did not intersect"):
         init_contour_z_extremum(mesh, lms, params)

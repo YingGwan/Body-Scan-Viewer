@@ -132,21 +132,42 @@ def init_contour_z_extremum(mesh, landmark_dict, params, config=None):
     normal = normal / norm_len
 
     path3d = mesh.section(plane_origin=origin, plane_normal=normal)
-    if path3d is None or len(path3d.entities) == 0 or not path3d.is_closed:
+    if path3d is None or len(path3d.entities) == 0:
         raise ValueError(f"Plane did not intersect mesh for landmarks {lm_names}")
 
-    largest_entity = max(path3d.entities, key=lambda e: len(e.discrete(path3d.vertices)))
-    contour_pts = largest_entity.discrete(path3d.vertices)
+    ref_y = origin[1]
+    y_margin = np.linalg.norm(p1 - p0) * 0.8
+
+    best_entity = None
+    best_dist = float("inf")
+    for entity in path3d.entities:
+        pts = entity.discrete(path3d.vertices)
+        centroid_y = np.mean(pts[:, 1])
+        dist = abs(centroid_y - ref_y)
+        if dist < best_dist:
+            best_dist = dist
+            best_entity = entity
+
+    if best_entity is None:
+        raise ValueError(f"No contour entity found for landmarks {lm_names}")
+
+    contour_pts = best_entity.discrete(path3d.vertices)
+    y_min_bound = min(p0[1], p1[1]) - y_margin
+    y_max_bound = max(p0[1], p1[1]) + y_margin
+    mask = (contour_pts[:, 1] >= y_min_bound) & (contour_pts[:, 1] <= y_max_bound)
+    local_pts = contour_pts[mask]
+    if len(local_pts) == 0:
+        local_pts = contour_pts
 
     extremum = params.get("extremum", "max")
     if extremum == "max":
-        idx = np.argmax(contour_pts[:, 2])
+        idx = np.argmax(local_pts[:, 2])
     elif extremum == "min":
-        idx = np.argmin(contour_pts[:, 2])
+        idx = np.argmin(local_pts[:, 2])
     else:
         raise ValueError(f"Unknown extremum type: {extremum}")
 
-    return contour_pts[idx].copy()
+    return local_pts[idx].copy()
 
 
 @_register_init("plane_intersection")
