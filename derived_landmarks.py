@@ -150,3 +150,82 @@ def init_arc_length_ratio(mesh, landmark_dict, params):
 @_register_init("three_plane_intersection")
 def init_three_plane_intersection(mesh, landmark_dict, params):
     raise NotImplementedError("Planned for Neck/Waist module")
+
+
+# =========================================================================
+# Unified entry points
+# =========================================================================
+
+def compute_derived_landmark(mesh, landmark_dict, lm_name, lm_config):
+    triangle_names = lm_config["triangle"]
+    A = np.asarray(landmark_dict[triangle_names[0]])
+    B = np.asarray(landmark_dict[triangle_names[1]])
+    C = np.asarray(landmark_dict[triangle_names[2]])
+
+    weights = lm_config.get("weights")
+    if weights is not None:
+        alpha, beta, gamma = weights
+        P_bary = from_barycentric(alpha, beta, gamma, A, B, C)
+        P_surface = project_to_mesh(P_bary, mesh)
+        return P_surface, tuple(weights)
+
+    init_method_name = lm_config["init_method"]
+    init_fn = INIT_METHODS.get(init_method_name)
+    if init_fn is None:
+        raise ValueError(f"Unknown init_method: {init_method_name}")
+    params = lm_config.get("init_params", {})
+    P_init = init_fn(mesh, landmark_dict, params)
+    P_surface = project_to_mesh(P_init, mesh)
+    alpha, beta, gamma = to_barycentric(P_surface, A, B, C)
+    return P_surface, (alpha, beta, gamma)
+
+
+def compute_all_derived_landmarks(mesh, landmark_dict, config):
+    results = {}
+    for name, lm_config in config["landmarks"].items():
+        pos, weights = compute_derived_landmark(mesh, landmark_dict, name, lm_config)
+        results[name] = {
+            "position": pos,
+            "weights": weights,
+            "family": lm_config["family"],
+        }
+    return results
+
+
+# =========================================================================
+# Measurement computation
+# =========================================================================
+
+def compute_configured_measurements(mesh, landmark_dict, derived_dict, measurements_config, geodesic_fn):
+    combined = dict(landmark_dict)
+    combined.update(derived_dict)
+
+    records = []
+    for name, m_config in measurements_config.items():
+        from_name = m_config["from"]
+        to_name = m_config["to"]
+        family = m_config["family"]
+
+        if from_name not in combined:
+            raise ValueError(f"Measurement '{name}': landmark '{from_name}' not found")
+        if to_name not in combined:
+            raise ValueError(f"Measurement '{name}': landmark '{to_name}' not found")
+
+        pt_a = np.asarray(combined[from_name])
+        pt_b = np.asarray(combined[to_name])
+        src = (from_name, to_name)
+
+        if m_config["type"] == "geodesic":
+            length_mm, path_verts = geodesic_fn(pt_a, pt_b)
+            records.append(MeasurementRecord(
+                name=name, family=family, value_mm=length_mm,
+                method="geodesic", source_landmarks=src,
+            ))
+            if m_config.get("also_output_y_projection", False):
+                y_proj = abs(float(pt_a[1]) - float(pt_b[1]))
+                records.append(MeasurementRecord(
+                    name=f"{name}_Y", family=family, value_mm=y_proj,
+                    method="y_projection", source_landmarks=src,
+                ))
+
+    return records

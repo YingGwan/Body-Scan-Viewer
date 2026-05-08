@@ -138,3 +138,75 @@ def test_init_three_plane_intersection_stub():
     from derived_landmarks import init_three_plane_intersection
     with pytest.raises(NotImplementedError):
         init_three_plane_intersection(None, {}, {})
+
+
+def test_compute_derived_landmark_null_weights(shared_mesh_and_landmarks):
+    from derived_landmarks import compute_derived_landmark
+    mesh, lms = shared_mesh_and_landmarks
+    lm_config = {
+        "triangle": ["ShoulderLeft", "ArmpitLeft", "NeckLeft"],
+        "weights": None,
+        "init_method": "contour_z_extremum",
+        "init_params": {"extremum": "max", "plane_landmarks": ["ShoulderLeft", "ArmpitLeft"]},
+        "family": "Armhole",
+    }
+    pos, weights = compute_derived_landmark(mesh, lms, "ArmholeDepthFrontLeft", lm_config)
+    assert pos.shape == (3,)
+    assert len(weights) == 3
+    assert abs(sum(weights) - 1.0) < 1e-8
+
+
+def test_compute_derived_landmark_preset_weights(shared_mesh_and_landmarks):
+    from derived_landmarks import compute_derived_landmark
+    mesh, lms = shared_mesh_and_landmarks
+    lm_config = {
+        "triangle": ["ShoulderLeft", "ArmpitLeft", "NeckLeft"],
+        "weights": [0.4, 0.4, 0.2],
+        "init_method": "contour_z_extremum",
+        "init_params": {"extremum": "max", "plane_landmarks": ["ShoulderLeft", "ArmpitLeft"]},
+        "family": "Armhole",
+    }
+    pos, weights = compute_derived_landmark(mesh, lms, "test", lm_config)
+    assert pos.shape == (3,)
+    np.testing.assert_allclose(weights, [0.4, 0.4, 0.2])
+
+
+def test_compute_all_derived_landmarks(shared_mesh_and_landmarks):
+    from derived_landmarks import compute_all_derived_landmarks, load_derived_landmark_config
+    mesh, lms = shared_mesh_and_landmarks
+    config = load_derived_landmark_config("config/derived_landmarks.yaml")
+    result = compute_all_derived_landmarks(mesh, lms, config)
+    assert len(result) == 4
+    for name in ["ArmholeDepthFrontLeft", "ArmholeDepthBackLeft",
+                 "ArmholeDepthFrontRight", "ArmholeDepthBackRight"]:
+        assert name in result
+        assert result[name]["position"].shape == (3,)
+        assert len(result[name]["weights"]) == 3
+        assert result[name]["family"] == "Armhole"
+
+
+def test_compute_configured_measurements(shared_mesh_and_landmarks):
+    from derived_landmarks import (
+        compute_configured_measurements, load_derived_landmark_config,
+        compute_all_derived_landmarks, MeasurementRecord,
+    )
+    mesh, lms = shared_mesh_and_landmarks
+    config = load_derived_landmark_config("config/derived_landmarks.yaml")
+    derived = compute_all_derived_landmarks(mesh, lms, config)
+    derived_flat = {n: d["position"] for n, d in derived.items()}
+
+    def mock_geodesic(pt_a, pt_b):
+        dist = float(np.linalg.norm(pt_a - pt_b))
+        return dist, np.array([pt_a, pt_b])
+
+    records = compute_configured_measurements(
+        mesh, lms, derived_flat, config["measurements"], mock_geodesic
+    )
+    assert len(records) >= 8  # 4 geodesic + 4 y_projection
+    families = {r.family for r in records}
+    assert "Shoulder" in families
+    methods = {r.method for r in records}
+    assert "geodesic" in methods
+    assert "y_projection" in methods
+    for r in records:
+        assert r.value_mm > 0
