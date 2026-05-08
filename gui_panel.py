@@ -538,25 +538,37 @@ class UI_Menu:
             except Exception:
                 pass
 
-        psim.Separator()
-        psim.TextUnformatted("Armhole")
+        # -- Per-family collapsible sections with sliders --
+        families_seen = []
         for lm_name, info in c.derived_lm_dict.items():
-            if info["family"] != "Armhole":
-                continue
-            if psim.TreeNode(lm_name):
-                self._render_landmark_sliders(lm_name, info)
+            if info["family"] not in families_seen:
+                families_seen.append(info["family"])
+
+        for family in families_seen:
+            psim.Separator()
+            if psim.TreeNode(f"{family} Landmarks"):
+                for lm_name, info in c.derived_lm_dict.items():
+                    if info["family"] != family:
+                        continue
+                    if psim.TreeNode(lm_name):
+                        self._render_landmark_sliders(lm_name, info)
+                        psim.TreePop()
                 psim.TreePop()
 
+        # -- Measurements collapsible --
         psim.Separator()
-        psim.TextUnformatted("Shoulder Measurements")
-        for meas_name, vals in self._measurements_cache.items():
-            geo_val = vals.get("geodesic", 0)
-            y_val = vals.get("y_projection", 0)
-            stale = " *" if self._geo_needs_refresh else ""
-            if geo_val > 0:
-                _ok(f"{meas_name}: geo {geo_val:.1f}mm  dY {y_val:.1f}mm{stale}")
-            elif y_val > 0:
-                psim.TextUnformatted(f"  {meas_name}: dY {y_val:.1f}mm")
+        if psim.TreeNode("Measurements"):
+            for meas_name, vals in self._measurements_cache.items():
+                geo_val = vals.get("geodesic", 0)
+                y_val = vals.get("y_projection", 0)
+                stale = " *" if self._geo_needs_refresh else ""
+                if geo_val > 0 and y_val > 0:
+                    _ok(f"{meas_name}: geo {geo_val:.1f}mm  dY {y_val:.1f}mm{stale}")
+                elif geo_val > 0:
+                    _ok(f"{meas_name}: geo {geo_val:.1f}mm{stale}")
+                elif y_val > 0:
+                    psim.TextUnformatted(f"  {meas_name}: dY {y_val:.1f}mm")
+            psim.TreePop()
 
         psim.Separator()
         if self._geo_needs_refresh:
