@@ -1,0 +1,46 @@
+{
+  "env": {
+    "ANTHROPIC_MODEL": "claude-opus-4-6[1m]", 
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
+    "MAX_THINKING_TOKENS": "256000"
+  },
+  "na":"claude-sonnet-4-5-20250929 claude-sonnet-4-20250514 claude-opus-4-6[1m] claude-opus-4-7[1m]",
+  "permissions": {
+    "allow": [
+      "Bash(find . -name \"*.py\" -maxdepth 1 -exec stat --format=\"%n %Y\" {} \\\\;)",
+      "Bash(find . -name \"*.py\" -maxdepth 1 -printf \"%p %T@\\\\n\")",
+      "Bash(ls -la *.py)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -c \"import ast; ast.parse\\(open\\('core/streaming_engine.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(/d/conda/envs/FastIKD/python.exe -c ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('visualization/fr5_fk.py'\\).read\\(\\)\\); print\\('fr5_fk.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('main.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('visualization/fr5_fk.py', encoding='utf-8'\\).read\\(\\)\\); print\\('fr5_fk.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('main.py', encoding='utf-8'\\).read\\(\\)\\); print\\('main.py OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('tools/manual_tc.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python3)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase9_manual_tc.py tests/test_phase7_toolchange.py -v)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase9_manual_tc.py -v)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase9_manual_tc.py tests/test_phase7_toolchange.py -v --tb=short)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase7_toolchange.py::TestToolChangeSequence::test_t7_36_high_depart_z_no_drop_during_xy_travel tests/test_phase7_toolchange.py::TestToolChangeSequence::test_t7_37_no_diagonal_from_slot_to_return_without_purge tests/test_phase7_toolchange.py::TestToolChangeSequence::test_t7_38_z_safety_invariant_all_xy_moves_at_transit_z tests/test_phase9_manual_tc.py -v)",
+      "Bash(grep -v '^\\\\.$')",
+      "Bash(awk '{print length, $0}')",
+      "Bash(awk '{print $2}')",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase7_toolchange.py tests/test_phase9_manual_tc.py -v --tb=short)",
+      "Bash(git commit -m ' *)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -X utf8 -m pytest tests -q)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase10_midjob_tool_change.py::TestMidJobToolChange::test_t10_10_integration_pause_manual_tc_debug_rewrite_resume -v)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase10_midjob_tool_change.py -v)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/ -v)",
+      "Bash(git stash *)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase7_toolchange.py::TestGuardChainRegression::test_t7_64_sync_params_connection_error_returns_offline tests/test_phase7_toolchange.py::TestGuardChainRegression::test_t7_65_estop_except_branch_clears_tc_state tests/test_phase7_toolchange.py::TestGuardChainRegression::test_t7_66_verify_action_not_popped_when_wait_aborted -v)",
+      "Bash(/d/conda/envs/FastIKD/python.exe -c \"import yaml; d=yaml.safe_load\\(open\\('config.yaml','r',encoding='utf-8'\\)\\); heads=d['tools']['heads']; print\\([\\(h['name'],h.get\\('trajectory_color'\\)\\) for h in heads]\\)\")",
+      "WebFetch(domain:nzfeng.github.io)",
+      "WebFetch(domain:geometry-central.net)",
+      "Bash(D:/conda/envs/FastIKD/python.exe -c \"import potpourri3d as pp3d; print\\(dir\\(pp3d\\)\\)\")",
+      "Bash(D:/conda/envs/FastIKD/python.exe -c \"import potpourri3d as pp3d; print\\([m for m in dir\\(pp3d.MeshVectorHeatSolver\\) if not m.startswith\\('_'\\)]\\)\")",
+      "Bash(D:/conda/envs/FastIKD/python.exe -c ' *)"
+    ]
+  },
+  "effortLevel": "xhigh"
+}
