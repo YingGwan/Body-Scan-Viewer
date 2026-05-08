@@ -624,7 +624,7 @@ class VisContent:
 
         self.measurement_results = compute_configured_measurements(
             self.mesh_ss, self.ss_lm_dict, derived_flat,
-            config["measurements"], geodesic_fn,
+            config["measurements"], geodesic_fn, config=config,
         )
 
         combined = dict(self.ss_lm_dict)

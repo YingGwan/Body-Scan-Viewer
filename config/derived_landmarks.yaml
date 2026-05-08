@@ -1,5 +1,14 @@
 version: 1
 
+# Landmark name aliases: map canonical names used in this config
+# to actual names in the dataset. Override when switching datasets.
+# If a name is not listed here, it is used as-is.
+landmark_name_map:
+  NeckLeft: "Mid Neck Left"
+  NeckRight: "Mid Neck Right"
+  NeckFront: NeckFront
+  NeckBack: NeckBack
+
 landmarks:
 
   ArmholeDepthFrontLeft:

@@ -55,6 +55,17 @@ def load_derived_landmark_config(yaml_path) -> dict:
     return config
 
 
+def resolve_landmark_name(name, config):
+    """Resolve a canonical landmark name to the dataset-specific name via landmark_name_map."""
+    name_map = config.get("landmark_name_map", {})
+    return name_map.get(name, name)
+
+
+def resolve_landmark_names(names, config):
+    """Resolve a list of canonical names."""
+    return [resolve_landmark_name(n, config) for n in names]
+
+
 def save_weights_to_yaml(yaml_path, landmark_name, weights):
     path = pathlib.Path(yaml_path)
     with open(path, "r", encoding="utf-8") as f:
@@ -104,10 +115,11 @@ def _register_init(name):
 
 
 @_register_init("contour_z_extremum")
-def init_contour_z_extremum(mesh, landmark_dict, params):
+def init_contour_z_extremum(mesh, landmark_dict, params, config=None):
     lm_names = params["plane_landmarks"]
-    p0 = np.asarray(landmark_dict[lm_names[0]])
-    p1 = np.asarray(landmark_dict[lm_names[1]])
+    resolved = resolve_landmark_names(lm_names, config) if config else lm_names
+    p0 = np.asarray(landmark_dict[resolved[0]])
+    p1 = np.asarray(landmark_dict[resolved[1]])
 
     origin = (p0 + p1) / 2.0
     direction = p1 - p0
@@ -138,17 +150,17 @@ def init_contour_z_extremum(mesh, landmark_dict, params):
 
 
 @_register_init("plane_intersection")
-def init_plane_intersection(mesh, landmark_dict, params):
+def init_plane_intersection(mesh, landmark_dict, params, config=None):
     raise NotImplementedError("Planned for Neck/Waist module")
 
 
 @_register_init("arc_length_ratio")
-def init_arc_length_ratio(mesh, landmark_dict, params):
+def init_arc_length_ratio(mesh, landmark_dict, params, config=None):
     raise NotImplementedError("Planned for Neck/Waist module")
 
 
 @_register_init("three_plane_intersection")
-def init_three_plane_intersection(mesh, landmark_dict, params):
+def init_three_plane_intersection(mesh, landmark_dict, params, config=None):
     raise NotImplementedError("Planned for Neck/Waist module")
 
 
@@ -156,11 +168,12 @@ def init_three_plane_intersection(mesh, landmark_dict, params):
 # Unified entry points
 # =========================================================================
 
-def compute_derived_landmark(mesh, landmark_dict, lm_name, lm_config):
+def compute_derived_landmark(mesh, landmark_dict, lm_name, lm_config, config=None):
     triangle_names = lm_config["triangle"]
-    A = np.asarray(landmark_dict[triangle_names[0]])
-    B = np.asarray(landmark_dict[triangle_names[1]])
-    C = np.asarray(landmark_dict[triangle_names[2]])
+    resolved_tri = resolve_landmark_names(triangle_names, config) if config else triangle_names
+    A = np.asarray(landmark_dict[resolved_tri[0]])
+    B = np.asarray(landmark_dict[resolved_tri[1]])
+    C = np.asarray(landmark_dict[resolved_tri[2]])
 
     weights = lm_config.get("weights")
     if weights is not None:
@@ -174,7 +187,7 @@ def compute_derived_landmark(mesh, landmark_dict, lm_name, lm_config):
     if init_fn is None:
         raise ValueError(f"Unknown init_method: {init_method_name}")
     params = lm_config.get("init_params", {})
-    P_init = init_fn(mesh, landmark_dict, params)
+    P_init = init_fn(mesh, landmark_dict, params, config=config)
     P_surface = project_to_mesh(P_init, mesh)
     alpha, beta, gamma = to_barycentric(P_surface, A, B, C)
     return P_surface, (alpha, beta, gamma)
@@ -183,7 +196,7 @@ def compute_derived_landmark(mesh, landmark_dict, lm_name, lm_config):
 def compute_all_derived_landmarks(mesh, landmark_dict, config):
     results = {}
     for name, lm_config in config["landmarks"].items():
-        pos, weights = compute_derived_landmark(mesh, landmark_dict, name, lm_config)
+        pos, weights = compute_derived_landmark(mesh, landmark_dict, name, lm_config, config=config)
         results[name] = {
             "position": pos,
             "weights": weights,
@@ -196,14 +209,14 @@ def compute_all_derived_landmarks(mesh, landmark_dict, config):
 # Measurement computation
 # =========================================================================
 
-def compute_configured_measurements(mesh, landmark_dict, derived_dict, measurements_config, geodesic_fn):
+def compute_configured_measurements(mesh, landmark_dict, derived_dict, measurements_config, geodesic_fn, config=None):
     combined = dict(landmark_dict)
     combined.update(derived_dict)
 
     records = []
     for name, m_config in measurements_config.items():
-        from_name = m_config["from"]
-        to_name = m_config["to"]
+        from_name = resolve_landmark_name(m_config["from"], config) if config else m_config["from"]
+        to_name = resolve_landmark_name(m_config["to"], config) if config else m_config["to"]
         family = m_config["family"]
 
         if from_name not in combined:
