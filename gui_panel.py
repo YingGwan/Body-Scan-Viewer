@@ -611,36 +611,87 @@ class UI_Menu:
         if changed:
             if self._lock_sum:
                 w[2] = 1.0 - w[0] - w[1]
-            self._derived_weights[lm_name] = w
-            A = np.asarray(c.ss_lm_dict[tri_names[0]])
-            B = np.asarray(c.ss_lm_dict[tri_names[1]])
-            C = np.asarray(c.ss_lm_dict[tri_names[2]])
-            P_bary = from_barycentric(w[0], w[1], w[2], A, B, C)
-            P_surface = project_to_mesh(P_bary, c.mesh_ss)
-            self._derived_positions[lm_name] = P_surface
-            c.derived_lm_dict[lm_name]["position"] = P_surface
-            c.derived_lm_dict[lm_name]["weights"] = tuple(w)
-
-            family = info["family"]
-            positions = [
-                d["position"] for n, d in c.derived_lm_dict.items()
-                if d["family"] == family
-            ]
-            try:
-                ps.register_point_cloud(
-                    f"Derived_{family}", np.array(positions),
-                    color=[0.8, 0.1, 0.1], enabled=True, radius=0.005,
-                )
-            except Exception:
-                pass
-
-            self._update_y_projections()
-            self._derived_dirty.add(lm_name)
-            self._weights_unsaved = True
-            self._geo_needs_refresh = True
+            self._apply_single_weight(lm_name, w, info)
 
         pos = self._derived_positions[lm_name]
         psim.TextUnformatted(f"  Pos: [{pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f}]")
+
+        if psim.Button(f"Apply##{lm_name}"):
+            self._apply_single_weight(lm_name, self._derived_weights[lm_name], info)
+        psim.SameLine()
+        if psim.Button(f"Save##{lm_name}"):
+            try:
+                save_weights_to_yaml(c._DERIVED_YAML, lm_name, self._derived_weights[lm_name])
+                self._derived_dirty.discard(lm_name)
+                self._set_status(f"{lm_name} saved", "ok")
+            except Exception as e:
+                self._set_status(f"Save {lm_name} failed: {e}", "err")
+        psim.SameLine()
+        if psim.Button(f"Load##{lm_name}"):
+            try:
+                from derived_landmarks import load_derived_landmark_config
+                fresh = load_derived_landmark_config(str(c._DERIVED_YAML))
+                w_yaml = fresh["landmarks"].get(lm_name, {}).get("weights")
+                if w_yaml is not None:
+                    self._derived_weights[lm_name] = list(w_yaml)
+                    self._apply_single_weight(lm_name, list(w_yaml), info)
+                    self._derived_dirty.discard(lm_name)
+                    self._set_status(f"{lm_name} loaded from YAML", "ok")
+                else:
+                    self._set_status(f"{lm_name} has no saved weights", "warn")
+            except Exception as e:
+                self._set_status(f"Load {lm_name} failed: {e}", "err")
+        psim.SameLine()
+        if psim.Button(f"Reset##{lm_name}"):
+            try:
+                from derived_landmarks import compute_derived_landmark
+                lm_cfg_reset = dict(cfg)
+                lm_cfg_reset["weights"] = None
+                pos_new, weights_new = compute_derived_landmark(
+                    c.mesh_ss, c.ss_lm_dict, lm_name, lm_cfg_reset, config=c.derived_lm_config
+                )
+                self._derived_weights[lm_name] = list(weights_new)
+                self._derived_positions[lm_name] = pos_new
+                c.derived_lm_dict[lm_name]["position"] = pos_new
+                c.derived_lm_dict[lm_name]["weights"] = weights_new
+                self._update_family_cloud(info["family"])
+                self._derived_dirty.add(lm_name)
+                self._weights_unsaved = True
+                self._geo_needs_refresh = True
+                self._set_status(f"{lm_name} reset to default", "ok")
+            except Exception as e:
+                self._set_status(f"Reset {lm_name} failed: {e}", "err")
+
+    def _apply_single_weight(self, lm_name, w, info):
+        c = self.content
+        from derived_landmarks import resolve_landmark_names
+        cfg = c.derived_lm_config["landmarks"][lm_name]
+        tri_resolved = resolve_landmark_names(cfg["triangle"], c.derived_lm_config)
+        A = np.asarray(c.ss_lm_dict[tri_resolved[0]])
+        B = np.asarray(c.ss_lm_dict[tri_resolved[1]])
+        C = np.asarray(c.ss_lm_dict[tri_resolved[2]])
+        P_bary = from_barycentric(w[0], w[1], w[2], A, B, C)
+        P_surface = project_to_mesh(P_bary, c.mesh_ss)
+        self._derived_weights[lm_name] = list(w)
+        self._derived_positions[lm_name] = P_surface
+        c.derived_lm_dict[lm_name]["position"] = P_surface
+        c.derived_lm_dict[lm_name]["weights"] = tuple(w)
+        self._update_family_cloud(info["family"])
+        self._update_y_projections()
+        self._derived_dirty.add(lm_name)
+        self._weights_unsaved = True
+        self._geo_needs_refresh = True
+
+    def _update_family_cloud(self, family):
+        c = self.content
+        positions = [d["position"] for n, d in c.derived_lm_dict.items() if d["family"] == family]
+        try:
+            ps.register_point_cloud(
+                f"Derived_{family}", np.array(positions),
+                color=[0.8, 0.1, 0.1], enabled=True, radius=0.005,
+            )
+        except Exception:
+            pass
 
     def _update_y_projections(self):
         c = self.content
