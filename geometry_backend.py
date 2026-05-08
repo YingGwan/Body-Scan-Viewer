@@ -32,6 +32,12 @@ from data_loader import (
 from geodesic_utils import build_edge_graph, build_geodesic_solver, compute_geodesic
 from registration import run_icp_registration
 from colorBar import _changeValueToColor
+import pathlib
+from derived_landmarks import (
+    load_derived_landmark_config, compute_all_derived_landmarks,
+    compute_configured_measurements, from_barycentric, project_to_mesh,
+    MeasurementRecord,
+)
 from unit_utils import (
     infer_mesh_unit_context,
     to_runtime_mm_vertices,
@@ -96,6 +102,11 @@ class VisContent:
         # Geodesic
         self.geodesic_length    = 0.0
 
+        # Derived landmarks (V3)
+        self.derived_lm_config  = None
+        self.derived_lm_dict    = {}
+        self.measurement_results = []
+
     @staticmethod
     def _extract_mesh_vertex_colors(mesh) -> Optional[np.ndarray]:
         """
@@ -156,6 +167,11 @@ class VisContent:
             "CAESAR_Landmarks", "CAESAR_Landmarks_Registered",
             "Landmark_Errors", "Geodesic_Path", "Geo_Endpoints",
             "Distance_to_CAESAR",
+            # V3 derived landmarks
+            "Derived_Armhole",
+            "Armhole_Section_L", "Armhole_Section_R",
+            "Geo_MidShoulderToApexLeft", "Geo_MidShoulderToApexRight",
+            "Geo_ApexToLowerBustLeft", "Geo_ApexToLowerBustRight",
         ]
         for name in known_structures:
             try:
@@ -557,3 +573,100 @@ class VisContent:
 
         self.geodesic_length = length
         return length
+
+    # ==========================================================================
+    # E. Derived Landmarks (V3)
+    # ==========================================================================
+
+    _DERIVED_YAML = pathlib.Path(__file__).resolve().parent / "config" / "derived_landmarks.yaml"
+
+    def compute_derived_landmarks(self):
+        if self.mesh_ss is None or not self.ss_lm_dict:
+            raise RuntimeError("Load SizeStream mesh + landmarks first")
+
+        if self.derived_lm_config is None:
+            self.derived_lm_config = load_derived_landmark_config(str(self._DERIVED_YAML))
+
+        self.derived_lm_dict = compute_all_derived_landmarks(
+            self.mesh_ss, self.ss_lm_dict, self.derived_lm_config,
+        )
+
+        families = {}
+        for name, info in self.derived_lm_dict.items():
+            families.setdefault(info["family"], []).append(info["position"])
+
+        for family, positions in families.items():
+            try:
+                ps.register_point_cloud(
+                    f"Derived_{family}",
+                    np.array(positions),
+                    color=[0.2, 0.4, 0.9],
+                    enabled=True,
+                    radius=0.003,
+                )
+            except Exception:
+                pass  # Polyscope not initialized in headless mode
+
+    def compute_shoulder_measurements(self):
+        if not self.derived_lm_dict:
+            raise RuntimeError("Compute derived landmarks first")
+
+        config = self.derived_lm_config
+        derived_flat = {n: d["position"] for n, d in self.derived_lm_dict.items()}
+
+        def geodesic_fn(pt_a, pt_b):
+            return compute_geodesic(
+                self.ss_edge_graph, self.mesh_ss.vertices,
+                pt_a, pt_b,
+                kdtree=self.ss_kdtree,
+                exact_solver=self.ss_geodesic_solver,
+            )
+
+        self.measurement_results = compute_configured_measurements(
+            self.mesh_ss, self.ss_lm_dict, derived_flat,
+            config["measurements"], geodesic_fn,
+        )
+
+        combined = dict(self.ss_lm_dict)
+        combined.update(derived_flat)
+        for r in self.measurement_results:
+            if r.method == "geodesic":
+                pt_a = np.asarray(combined[r.source_landmarks[0]])
+                pt_b = np.asarray(combined[r.source_landmarks[1]])
+                _, path_verts = geodesic_fn(pt_a, pt_b)
+                if path_verts is not None and len(path_verts) >= 2:
+                    n = len(path_verts)
+                    edges = np.array([[i, i + 1] for i in range(n - 1)])
+                    color = [0.2, 0.8, 0.3] if "MidShoulder" in r.name else [0.2, 0.7, 0.7]
+                    try:
+                        ps.register_curve_network(
+                            f"Geo_{r.name}", path_verts, edges,
+                            color=color, radius=0.001,
+                        )
+                    except Exception:
+                        pass  # Polyscope not initialized in headless mode
+
+    def export_results_to_excel(self, output_path: str):
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws_lm = wb.active
+        ws_lm.title = "Landmarks"
+        ws_lm.append(["Name", "X_mm", "Y_mm", "Z_mm", "Type", "Family"])
+
+        for name, pos in self.ss_lm_dict.items():
+            ws_lm.append([name, float(pos[0]), float(pos[1]), float(pos[2]), "original", ""])
+
+        for name, info in self.derived_lm_dict.items():
+            p = info["position"]
+            ws_lm.append([name, float(p[0]), float(p[1]), float(p[2]), "derived", info["family"]])
+
+        ws_m = wb.create_sheet("Measurements")
+        ws_m.append(["Family", "Name", "Value_mm", "Value_cm", "Method", "From", "To"])
+        for r in self.measurement_results:
+            ws_m.append([
+                r.family, r.name, round(r.value_mm, 2), round(r.value_mm / 10, 2),
+                r.method, r.source_landmarks[0], r.source_landmarks[1],
+            ])
+
+        wb.save(output_path)
