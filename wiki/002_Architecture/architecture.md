@@ -73,7 +73,7 @@ config/
 → [[registration/design]]
 
 ### Measurements（度量）
-状态：**部分实现**（geodesic + Euclidean + V3 Neck/Shoulder geodesic + Y-projection；围度待实现）
+状态：**部分实现**（geodesic + Euclidean + V3 geodesic 12 + Y-projection 4 + arc_length 18 + euclidean 3D 2；围度待实现）
 → [[measurements/design]]
 
 ### Rendering（可视化）

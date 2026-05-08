@@ -10,10 +10,12 @@
 2. **ICP 配准**：将 CAESAR 扫描刚体配准到 SizeStream 参考空间
 3. **距离热图**：每个 SS landmark 到 registered CAESAR 的距离可视化
 4. **Geodesic 测量**：mesh 表面上任意两个 landmark 间的最短路径
-5. **V3 Derived Landmarks（开发中）**：重心坐标参数化的 derived landmark 框架
-   - 8 个已实现：4 Neck（两平面交线法）+ 4 Armhole（截面 Z 极值法）
-   - 交互式 GUI 滑块微调 + YAML 持久化
-   - 12 条 geodesic 测量 + 4 条 Y 投影
+5. **V3 Derived Landmarks**：重心坐标参数化的 derived landmark 框架（4 init_methods 全部已实现）
+   - 14 个已定义：4 Neck（plane_intersection）+ 4 Armhole（contour_z_extremum）+ 6 Waist（arc_length_ratio / three_plane_intersection，待跨 subject 数据验证）
+   - 交互式 GUI 滑块微调 + YAML 持久化 (Panel E)
+   - 32 条度量：12 geodesic + 4 Y-projection + 18 arc_length + 2 euclidean
+6. **面部匿名化**：Open3D quadric decimation proxy + boundary falloff vertex smoothing (Panel F)
+   - 椭圆+深度范围区域选择，拓扑不变
 
 ## 5 分钟理解代码
 

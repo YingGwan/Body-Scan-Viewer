@@ -26,8 +26,12 @@ flowchart LR
   C --> D[Coarse-to-fine ICP registration]
   D --> E[Landmark distance heatmap]
   D --> F[Geodesic surface measurement]
-  E --> G[Polyscope 3D visualization]
-  F --> G
+  D --> G[Derived landmarks + V3 measurements]
+  D --> H[Face anonymization]
+  E --> I[Polyscope 3D visualization]
+  F --> I
+  G --> I
+  H --> I
 ```
 
 ## 未来 Pipeline（规划中）
@@ -35,10 +39,9 @@ flowchart LR
 ```mermaid
 flowchart LR
   A[Body scan mesh + landmarks] --> B[Mesh preprocessing]
-  B --> B2[Face anonymization]
-  B2 --> C[Landmark-based slicing]
-  C --> D[Slice intersection → derived landmarks]
-  D --> E[Geodesic distance / measurements]
+  B --> C[Landmark-based slicing]
+  C --> D[Slice intersection → cross-section contours]
+  D --> E[Circumference / additional measurements]
   E --> F[Rendering + physical quantity extraction]
 ```
 

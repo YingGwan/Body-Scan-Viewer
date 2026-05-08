@@ -138,11 +138,11 @@ conda run -n FastIKD python -m pytest tests/test_derived_landmarks.py tests/test
 2. **Waist/Bust dart landmarks (6 个)**：init_methods 已实现，需在 4 个 subject 上跑数据验证 + 权重持久化
 3. **Thigh 四段弧长**：复用弧长引擎
 4. **统一 Excel 导出**：完善 `export_results_to_excel()` 加坐标导出规则（Z(0)=Crotch，仅导出时变换）
-5. **面部匿名化**：已实现（Open3D quadric decimation proxy + boundary falloff），见 `face_anonymization.py`
+5. **统一 Excel 导出**：完善 `export_results_to_excel()` 加坐标导出规则（Z(0)=Crotch，仅导出时变换）
 
 ## 已知 bug / 注意事项
 
-- `slice_mesh_plane(cap=True)` 在 FastIKD 环境中需要安装 `triangle` 或 `mapbox-earcut` 才能工作
+- 生产代码使用 `mesh.section()` 而非 `slice_mesh_plane(cap=True)`（后者在 FastIKD 环境中需 `triangle`/`mapbox-earcut`，仅在实验代码 `TODO/` 中出现）
 - Polyscope `ps.register_point_cloud()` 是重注册而非 in-place 更新，per-frame 性能 ~2ms，可接受
 - `save_weights_to_yaml` 用 PyYAML，不保留 YAML 注释（PyYAML 限制）
 - geodesic 计算 ~50ms/条，滑块拖动时只更新位置和 Y 投影，geodesic 需手动点 Refresh
