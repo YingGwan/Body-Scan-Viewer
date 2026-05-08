@@ -11,6 +11,42 @@ landmark_name_map:
 
 landmarks:
 
+  NeckFrontLeft:
+    triangle: [NeckFront, NeckLeft, NeckBack]
+    weights: null
+    init_method: plane_intersection
+    init_params:
+      coronal_landmark: NeckFront
+      sagittal_landmark: NeckLeft
+    family: Neck
+
+  NeckFrontRight:
+    triangle: [NeckFront, NeckRight, NeckBack]
+    weights: null
+    init_method: plane_intersection
+    init_params:
+      coronal_landmark: NeckFront
+      sagittal_landmark: NeckRight
+    family: Neck
+
+  NeckBackLeft:
+    triangle: [NeckBack, NeckLeft, NeckFront]
+    weights: null
+    init_method: plane_intersection
+    init_params:
+      coronal_landmark: NeckBack
+      sagittal_landmark: NeckLeft
+    family: Neck
+
+  NeckBackRight:
+    triangle: [NeckBack, NeckRight, NeckFront]
+    weights: null
+    init_method: plane_intersection
+    init_params:
+      coronal_landmark: NeckBack
+      sagittal_landmark: NeckRight
+    family: Neck
+
   ArmholeDepthFrontLeft:
     triangle: [ShoulderLeft, ArmpitLeft, NeckLeft]
     weights: null

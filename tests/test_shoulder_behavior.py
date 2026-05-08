@@ -87,8 +87,9 @@ def loaded_content():
 def test_compute_derived_landmarks(loaded_content):
     vc = loaded_content
     vc.compute_derived_landmarks()
-    assert len(vc.derived_lm_dict) == 4
-    for name in ["ArmholeDepthFrontLeft", "ArmholeDepthBackLeft",
+    assert len(vc.derived_lm_dict) == 8
+    for name in ["NeckFrontLeft", "NeckFrontRight", "NeckBackLeft", "NeckBackRight",
+                 "ArmholeDepthFrontLeft", "ArmholeDepthBackLeft",
                  "ArmholeDepthFrontRight", "ArmholeDepthBackRight"]:
         assert name in vc.derived_lm_dict
         pos = vc.derived_lm_dict[name]["position"]

@@ -172,7 +172,39 @@ def init_contour_z_extremum(mesh, landmark_dict, params, config=None):
 
 @_register_init("plane_intersection")
 def init_plane_intersection(mesh, landmark_dict, params, config=None):
-    raise NotImplementedError("Planned for Neck/Waist module")
+    coronal_name = params["coronal_landmark"]
+    sagittal_name = params["sagittal_landmark"]
+    if config:
+        coronal_name = resolve_landmark_name(coronal_name, config)
+        sagittal_name = resolve_landmark_name(sagittal_name, config)
+
+    coronal_pt = np.asarray(landmark_dict[coronal_name])
+    sagittal_pt = np.asarray(landmark_dict[sagittal_name])
+
+    line_x = sagittal_pt[0]
+    line_z = coronal_pt[2]
+
+    y_min = min(coronal_pt[1], sagittal_pt[1]) - 100.0
+    y_max = max(coronal_pt[1], sagittal_pt[1]) + 100.0
+    origins = np.array([[line_x, y, line_z] for y in np.linspace(y_min, y_max, 300)])
+    dirs = np.tile([0.0, 1.0, 0.0], (300, 1))
+
+    locs, _, _ = mesh.ray.intersects_location(ray_origins=origins, ray_directions=dirs)
+    if len(locs) == 0:
+        raise ValueError(
+            f"Plane intersection did not hit mesh for {coronal_name}/{sagittal_name}"
+        )
+
+    y_range_min = min(coronal_pt[1], sagittal_pt[1]) - 50.0
+    y_range_max = max(coronal_pt[1], sagittal_pt[1]) + 50.0
+    mask = (locs[:, 1] >= y_range_min) & (locs[:, 1] <= y_range_max)
+    filtered = locs[mask]
+    if len(filtered) == 0:
+        filtered = locs
+
+    ref_mid = (coronal_pt + sagittal_pt) / 2.0
+    dists = np.linalg.norm(filtered - ref_mid, axis=1)
+    return filtered[np.argmin(dists)].copy()
 
 
 @_register_init("arc_length_ratio")

@@ -125,10 +125,14 @@ def test_init_contour_z_extremum_no_intersection():
         init_contour_z_extremum(mesh, lms, params)
 
 
-def test_init_plane_intersection_stub():
-    from derived_landmarks import init_plane_intersection
-    with pytest.raises(NotImplementedError):
-        init_plane_intersection(None, {}, {})
+def test_init_plane_intersection(shared_mesh_and_landmarks):
+    from derived_landmarks import init_plane_intersection, load_derived_landmark_config
+    mesh, lms = shared_mesh_and_landmarks
+    cfg = load_derived_landmark_config("config/derived_landmarks.yaml")
+    params = {"coronal_landmark": "NeckFront", "sagittal_landmark": "NeckLeft"}
+    pt = init_plane_intersection(mesh, lms, params, config=cfg)
+    assert pt.shape == (3,)
+    assert 1250 < pt[1] < 1400
 
 
 def test_init_arc_length_ratio_stub():
@@ -179,13 +183,13 @@ def test_compute_all_derived_landmarks(shared_mesh_and_landmarks):
     mesh, lms = shared_mesh_and_landmarks
     config = load_derived_landmark_config("config/derived_landmarks.yaml")
     result = compute_all_derived_landmarks(mesh, lms, config)
-    assert len(result) == 4
-    for name in ["ArmholeDepthFrontLeft", "ArmholeDepthBackLeft",
+    assert len(result) == 8
+    for name in ["NeckFrontLeft", "NeckFrontRight", "NeckBackLeft", "NeckBackRight",
+                 "ArmholeDepthFrontLeft", "ArmholeDepthBackLeft",
                  "ArmholeDepthFrontRight", "ArmholeDepthBackRight"]:
         assert name in result
         assert result[name]["position"].shape == (3,)
         assert len(result[name]["weights"]) == 3
-        assert result[name]["family"] == "Armhole"
 
 
 def test_compute_configured_measurements(shared_mesh_and_landmarks):
