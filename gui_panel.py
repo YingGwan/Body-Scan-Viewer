@@ -490,7 +490,11 @@ class UI_Menu:
                 }
                 self._measurements_cache = {}
                 for r in c.measurement_results:
-                    self._measurements_cache.setdefault(r.name, {})[r.method] = r.value_mm
+                    if r.name.endswith("_Y"):
+                        parent = r.name[:-2]
+                        self._measurements_cache.setdefault(parent, {})["y_projection"] = r.value_mm
+                    else:
+                        self._measurements_cache.setdefault(r.name, {})[r.method] = r.value_mm
                 self._derived_dirty.clear()
                 self._weights_unsaved = False
                 self._geo_needs_refresh = False
@@ -591,14 +595,14 @@ class UI_Menu:
         config = c.derived_lm_config
         for meas_name, m_config in config["measurements"].items():
             if m_config.get("also_output_y_projection"):
-                pt_a = combined.get(m_config["from"])
-                pt_b = combined.get(m_config["to"])
+                from derived_landmarks import resolve_landmark_name
+                from_name = resolve_landmark_name(m_config["from"], config)
+                to_name = resolve_landmark_name(m_config["to"], config)
+                pt_a = combined.get(from_name)
+                pt_b = combined.get(to_name)
                 if pt_a is not None and pt_b is not None:
                     y_proj = abs(float(pt_a[1]) - float(pt_b[1]))
                     self._measurements_cache.setdefault(meas_name, {})["y_projection"] = y_proj
-                    self._measurements_cache.setdefault(
-                        f"{meas_name}_Y", {}
-                    )["y_projection"] = y_proj
 
     def _refresh_geodesics(self):
         c = self.content
@@ -606,7 +610,11 @@ class UI_Menu:
             c.compute_shoulder_measurements()
             self._measurements_cache = {}
             for r in c.measurement_results:
-                self._measurements_cache.setdefault(r.name, {})[r.method] = r.value_mm
+                if r.name.endswith("_Y"):
+                    parent = r.name[:-2]
+                    self._measurements_cache.setdefault(parent, {})["y_projection"] = r.value_mm
+                else:
+                    self._measurements_cache.setdefault(r.name, {})[r.method] = r.value_mm
             self._geo_needs_refresh = False
             self._set_status("Geodesics refreshed", "ok")
         except Exception as e:

@@ -124,11 +124,11 @@ def init_contour_z_extremum(mesh, landmark_dict, params, config=None):
     origin = (p0 + p1) / 2.0
     direction = p1 - p0
     direction = direction / np.linalg.norm(direction)
-    x_axis = np.array([1.0, 0.0, 0.0])
-    normal = np.cross(direction, x_axis)
+    z_axis = np.array([0.0, 0.0, 1.0])
+    normal = np.cross(direction, z_axis)
     norm_len = np.linalg.norm(normal)
     if norm_len < 1e-10:
-        raise ValueError(f"Plane landmarks {lm_names} are parallel to X-axis, cannot compute normal")
+        raise ValueError(f"Plane landmarks {lm_names} are parallel to Z-axis, cannot compute normal")
     normal = normal / norm_len
 
     path3d = mesh.section(plane_origin=origin, plane_normal=normal)
