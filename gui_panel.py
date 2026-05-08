@@ -575,7 +575,7 @@ class UI_Menu:
             try:
                 ps.register_point_cloud(
                     f"Derived_{family}", np.array(positions),
-                    color=[0.2, 0.4, 0.9], enabled=True, radius=0.003,
+                    color=[0.8, 0.1, 0.1], enabled=True, radius=0.005,
                 )
             except Exception:
                 pass

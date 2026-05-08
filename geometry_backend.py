@@ -168,7 +168,7 @@ class VisContent:
             "Landmark_Errors", "Geodesic_Path", "Geo_Endpoints",
             "Distance_to_CAESAR",
             # V3 derived landmarks
-            "Derived_Armhole",
+            "Ref_Triangle_Vertices", "Derived_Armhole",
             "Armhole_Section_L", "Armhole_Section_R",
             "Geo_MidShoulderToApexLeft", "Geo_MidShoulderToApexRight",
             "Geo_ApexToLowerBustLeft", "Geo_ApexToLowerBustRight",
@@ -592,20 +592,35 @@ class VisContent:
         )
 
         families = {}
+        ref_positions = []
         for name, info in self.derived_lm_dict.items():
             families.setdefault(info["family"], []).append(info["position"])
+            cfg = self.derived_lm_config["landmarks"][name]
+            from derived_landmarks import resolve_landmark_names
+            tri_resolved = resolve_landmark_names(cfg["triangle"], self.derived_lm_config)
+            for tri_name in tri_resolved:
+                if tri_name in self.ss_lm_dict:
+                    ref_positions.append(self.ss_lm_dict[tri_name])
 
-        for family, positions in families.items():
-            try:
+        try:
+            if ref_positions:
+                ps.register_point_cloud(
+                    "Ref_Triangle_Vertices",
+                    np.array(ref_positions),
+                    color=[1.0, 0.5, 0.5],
+                    enabled=True,
+                    radius=0.004,
+                )
+            for family, positions in families.items():
                 ps.register_point_cloud(
                     f"Derived_{family}",
                     np.array(positions),
-                    color=[0.2, 0.4, 0.9],
+                    color=[0.8, 0.1, 0.1],
                     enabled=True,
-                    radius=0.003,
+                    radius=0.005,
                 )
-            except Exception:
-                pass  # Polyscope not initialized in headless mode
+        except Exception:
+            pass
 
     def compute_shoulder_measurements(self):
         if not self.derived_lm_dict:
