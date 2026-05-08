@@ -44,6 +44,7 @@ from unit_utils import (
     from_runtime_mm_vertices,
     transform_mm_to_original_units,
 )
+from face_anonymization import anonymize_face_open3d
 
 
 class VisContent:
@@ -106,6 +107,7 @@ class VisContent:
         self.derived_lm_config  = None
         self.derived_lm_dict    = {}
         self.measurement_results = []
+        self.face_anonymization_stats = None
 
     @staticmethod
     def _extract_mesh_vertex_colors(mesh) -> Optional[np.ndarray]:
@@ -623,6 +625,158 @@ class VisContent:
         except Exception:
             pass
 
+    def register_waist_contours(self):
+        if self.mesh_ss is None or not self.derived_lm_dict:
+            return
+        import trimesh
+
+        contours = {
+            "Waist_Contour": "WaistFront",
+            "Bust_Contour": "BustFront",
+            "LeftThigh_Contour": "UpperLeftThighFront",
+            "RightThigh_Contour": "UpperRightThighFront",
+        }
+        colors = {
+            "Waist_Contour": [0.2, 0.6, 1.0],
+            "Bust_Contour": [1.0, 0.5, 0.2],
+            "LeftThigh_Contour": [0.2, 0.9, 0.4],
+            "RightThigh_Contour": [0.2, 0.9, 0.4],
+        }
+
+        for curve_name, ref_lm in contours.items():
+            if ref_lm not in self.ss_lm_dict:
+                continue
+            ref_pt = self.ss_lm_dict[ref_lm]
+            plane_y = float(ref_pt[1])
+            path3d = self.mesh_ss.section(
+                plane_origin=[0, plane_y, 0], plane_normal=[0, 1, 0]
+            )
+            if path3d is None or len(path3d.entities) == 0:
+                continue
+
+            best_entity = min(
+                path3d.entities,
+                key=lambda e: np.linalg.norm(
+                    np.mean(e.discrete(path3d.vertices), axis=0) - ref_pt
+                ),
+            )
+            pts = best_entity.discrete(path3d.vertices)
+            if len(pts) < 2:
+                continue
+
+            n = len(pts)
+            edges = [[i, (i + 1) % n] for i in range(n)]
+            try:
+                ps.register_curve_network(
+                    curve_name, pts, np.array(edges),
+                    color=colors[curve_name], radius=0.0008, enabled=True,
+                )
+            except Exception:
+                pass
+
+        armhole_planes = {
+            "ArmholeLeft_Contour": ("ShoulderLeft", "ArmpitLeft"),
+            "ArmholeRight_Contour": ("ShoulderRight", "ArmpitRight"),
+        }
+        for curve_name, (top_lm, bot_lm) in armhole_planes.items():
+            if top_lm not in self.ss_lm_dict or bot_lm not in self.ss_lm_dict:
+                continue
+            p0 = np.asarray(self.ss_lm_dict[top_lm])
+            p1 = np.asarray(self.ss_lm_dict[bot_lm])
+            origin = (p0 + p1) / 2.0
+            direction = (p1 - p0)
+            direction = direction / np.linalg.norm(direction)
+            section_normal = np.cross(direction, [0.0, 0.0, 1.0])
+            norm_len = np.linalg.norm(section_normal)
+            if norm_len < 1e-10:
+                continue
+            section_normal = section_normal / norm_len
+
+            path3d = self.mesh_ss.section(
+                plane_origin=origin, plane_normal=section_normal,
+            )
+            if path3d is None or len(path3d.entities) == 0:
+                continue
+
+            best_entity = min(
+                path3d.entities,
+                key=lambda e: abs(
+                    np.mean(e.discrete(path3d.vertices)[:, 1]) - origin[1]
+                ),
+            )
+            all_pts = best_entity.discrete(path3d.vertices)
+            n_all = len(all_pts)
+
+            clip_y = float(p1[1])
+            h_signed = all_pts[:, 1] - clip_y
+
+            segments = []
+            cur_seg = []
+            for i in range(n_all):
+                j = (i + 1) % n_all
+                above_i = h_signed[i] >= 0
+                above_j = h_signed[j] >= 0
+                if above_i:
+                    cur_seg.append(all_pts[i])
+                if above_i and not above_j:
+                    t = h_signed[i] / (h_signed[i] - h_signed[j])
+                    cur_seg.append(all_pts[i] + t * (all_pts[j] - all_pts[i]))
+                    if len(cur_seg) >= 2:
+                        segments.append(np.array(cur_seg))
+                    cur_seg = []
+                elif not above_i and above_j:
+                    t = h_signed[i] / (h_signed[i] - h_signed[j])
+                    cur_seg = [all_pts[i] + t * (all_pts[j] - all_pts[i])]
+            if len(cur_seg) >= 2:
+                segments.append(np.array(cur_seg))
+            if (len(segments) >= 2
+                    and h_signed[0] >= 0
+                    and h_signed[-1] >= 0):
+                segments[0] = np.vstack([segments[-1], segments[0]])
+                segments.pop()
+
+            if not segments:
+                continue
+
+            arc = min(
+                segments,
+                key=lambda s: np.min(np.linalg.norm(s - p0, axis=1)),
+            )
+            arc = np.vstack([arc, arc[0].reshape(1, 3)])
+
+            if len(arc) < 3:
+                continue
+            n_arc = len(arc)
+            edges = np.array([[i, i + 1] for i in range(n_arc - 1)])
+            try:
+                ps.register_curve_network(
+                    curve_name, arc, edges,
+                    color=[0.1, 0.3, 0.9], radius=0.0008, enabled=True,
+                )
+            except Exception:
+                pass
+
+        thigh_groups = {
+            "Thigh_Left_Landmarks": [
+                "UpperLeftThighFront", "UpperLeftThighLeft",
+                "UpperLeftThighBack", "UpperLeftThighRight",
+            ],
+            "Thigh_Right_Landmarks": [
+                "UpperRightThighFront", "UpperRightThighLeft",
+                "UpperRightThighBack", "UpperRightThighRight",
+            ],
+        }
+        for cloud_name, lm_names in thigh_groups.items():
+            pts = [self.ss_lm_dict[n] for n in lm_names if n in self.ss_lm_dict]
+            if pts:
+                try:
+                    ps.register_point_cloud(
+                        cloud_name, np.array(pts),
+                        color=[0.8, 0.1, 0.1], enabled=True, radius=0.005,
+                    )
+                except Exception:
+                    pass
+
     def compute_shoulder_measurements(self):
         if not self.derived_lm_dict:
             raise RuntimeError("Compute derived landmarks first")
@@ -691,3 +845,50 @@ class VisContent:
             ])
 
         wb.save(output_path)
+
+    # ==========================================================================
+    # F. Face Anonymization
+    # ==========================================================================
+
+    def anonymize_face(self, target_ratio=0.05):
+        if self.mesh_ss is None or not self.ss_lm_dict:
+            raise RuntimeError("Load SizeStream mesh + landmarks first")
+
+        result = anonymize_face_open3d(
+            self.mesh_ss,
+            self.ss_lm_dict,
+            target_ratio=target_ratio,
+        )
+        if result.before_boundary_edges != result.after_boundary_edges:
+            raise RuntimeError(
+                "Face anonymization changed mesh boundary edges: "
+                f"{result.before_boundary_edges} -> {result.after_boundary_edges}"
+            )
+        if result.before_components != result.after_components:
+            raise RuntimeError(
+                "Face anonymization changed mesh connected components: "
+                f"{result.before_components} -> {result.after_components}"
+            )
+
+        self.mesh_ss = result.mesh
+        self.face_anonymization_stats = result
+        self.ss_edge_graph = build_edge_graph(self.mesh_ss)
+        self.ss_geodesic_solver = build_geodesic_solver(self.mesh_ss)
+        self.ss_kdtree = cKDTree(self.mesh_ss.vertices)
+
+        ss_mesh_cfg = APP_CONFIG.render.sizestream_mesh
+        try:
+            if ps.has_surface_mesh("SizeStream"):
+                ps.remove_surface_mesh("SizeStream")
+        except Exception:
+            pass
+        ps.register_surface_mesh(
+            "SizeStream",
+            self.mesh_ss.vertices,
+            self.mesh_ss.faces,
+            color=ss_mesh_cfg.color,
+            enabled=ss_mesh_cfg.enabled,
+            transparency=ss_mesh_cfg.transparency,
+            smooth_shade=ss_mesh_cfg.smooth_shade,
+        )
+        return result.selected_face_count, len(self.mesh_ss.faces)

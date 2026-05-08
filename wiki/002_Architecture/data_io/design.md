@@ -24,10 +24,18 @@
 - 多词名称通过 `' '.join(parts[7:])` 保留
 - len(parts) < 8 的行自动跳过（header 行）
 
-### 配置加载
+### JSON 配置加载
 - 两个 JSON 文件：`project_config.json` + `render_config.json`
 - 每个 key 必须有 `key__comment`
 - 启动时完整 schema 验证，失败即 raise
+
+### YAML 配置加载（derived landmarks）
+- 文件：`config/derived_landmarks.yaml`（version: 1）
+- 由 `derived_landmarks.py:load_derived_landmark_config()` 懒加载（首次计算 derived landmarks 时触发）
+- 验证：version 字段、landmarks/measurements section 存在性、每个 landmark 的 triangle (len=3)、init_method、family
+- 写入：`derived_landmarks.py:save_weights_to_yaml()` — 单 landmark 权重原地更新
+- 注意：PyYAML 不保留 YAML 注释（已知限制）
+- 与 JSON 配置独立：不经过 `config_loader.py`，无 `key__comment` 要求
 
 ## 输入契约
 
@@ -36,6 +44,7 @@
 - CAESAR PLY: trimesh-loadable mesh file
 - CAESAR LND: text file, space-separated, typically latin-1 (with utf-8/utf-8-sig fallback)
 - Config JSON: UTF-8, schema version 1
+- Config YAML: UTF-8, schema version 1 (`config/derived_landmarks.yaml`)
 
 ## 输出契约
 
@@ -67,7 +76,7 @@
 
 ## 状态
 
-- 已完成：文件夹扫描、XLSX 解析、LND 解析、配置系统
+- 已完成：文件夹扫描、XLSX 解析、LND 解析、JSON 配置系统、YAML 配置加载/保存
 - 待实现：无
 
 上次更新：2026-05-08

@@ -24,23 +24,27 @@ last_verified: 2026-05-08
 **Code anchors:** 
 - `geodesic_utils.py:compute_geodesic()` — 对应 settled 中 "Geodesic distance" 定义
 - `geometry_backend.py:compare_landmark_distances()` — 对应 settled 中 "Landmark Euclidean distance" 和 "Per-vertex distance" 定义
+- `derived_landmarks.py:compute_configured_measurements()` — 对应 settled 中 V3 度量（Neck/Shoulder geodesic, Y-projection, arc_length, euclidean）
+- `geometry_backend.py:compute_shoulder_measurements()` — V3 集成入口
 
 ## E2 — Geodesic vs Euclidean Disambiguation
 
-**Rule:** Geodesic distance 和 Euclidean distance 不可混用。度量结果必须声明使用哪个。在 mesh surface 上两点之间，geodesic ≥ Euclidean（三角不等式）。
+**Rule:** Geodesic distance、Euclidean distance、Y-projection distance、arc length 不可混用。度量结果必须声明类型。geodesic ≥ Euclidean（三角不等式）。Y-projection 是纯高度差（单轴），不是 3D Euclidean。arc length 是截面环上的弧线段，不是 geodesic。
 
-**Why silent:** 两者量纲相同（mm），数值可能接近（平坦区域），混用在小范围内难以发现。
+**Why silent:** 量纲均为 mm，数值可能接近（平坦区域），混用在小范围内难以发现。
 
 **Typical symptom:** 度量在弯曲区域（如腋下）明显偏小；或在平坦区域数值相似而让人误以为两者等价。
 
 **Required checks:** 
 - 函数名或返回值声明 distance type
-- UI 标注区分 geodesic 和 Euclidean
+- UI 标注区分不同度量类型
+- `MeasurementRecord.method` 字段必须为 "geodesic" / "euclidean" / "arc_length" / "y_projection"
 
 **Code anchors:**
 - `geodesic_utils.py` — 明确是 geodesic（surface path）
 - `geometry_backend.py:compare_landmark_distances()` — 使用 `trimesh.proximity.closest_point()`，这是 Euclidean 最近点距离
-- `gui_panel.py` — Panel D 标注为 "Geodesic"，Panel C 标注为 "Distance"（nearest-point Euclidean）
+- `gui_panel.py` — Panel D 标注为 "Geodesic"，Panel C 标注为 "Distance"（nearest-point Euclidean），Panel E 标注 geodesic / dY
+- `derived_landmarks.py:compute_configured_measurements()` — `MeasurementRecord.method` 字段区分 4 种类型
 
 ## E3 — Rendering Unit Consistency
 

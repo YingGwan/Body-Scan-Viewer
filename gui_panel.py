@@ -23,7 +23,6 @@ import numpy as np
 import polyscope.imgui as psim
 from config_loader import APP_CONFIG
 import polyscope as ps
-from data_loader import PROCESSED_DIR
 from derived_landmarks import from_barycentric, project_to_mesh, save_weights_to_yaml
 
 
@@ -33,19 +32,26 @@ from derived_landmarks import from_barycentric, project_to_mesh, save_weights_to
 
 def _ok(msg):
     """Green status text for success messages."""
-    psim.TextColored((0.3, 1.0, 0.3, 1.0), f"[OK] {msg}")
+    _text_colored((0.3, 1.0, 0.3, 1.0), f"[OK] {msg}")
 
 def _warn(msg):
     """Yellow status text for warnings."""
-    psim.TextColored((1.0, 0.85, 0.1, 1.0), f"[!!] {msg}")
+    _text_colored((1.0, 0.85, 0.1, 1.0), f"[!!] {msg}")
 
 def _err(msg):
     """Red status text for errors."""
-    psim.TextColored((1.0, 0.35, 0.35, 1.0), f"[ERR] {msg}")
+    _text_colored((1.0, 0.35, 0.35, 1.0), f"[ERR] {msg}")
 
 def _info(msg):
     """Gray status text for informational messages."""
     psim.TextDisabled(f"     {msg}")
+
+def _text_colored(color, text):
+    text_colored = getattr(psim, "TextColored", None)
+    if text_colored is not None:
+        text_colored(color, text)
+    elif hasattr(psim, "TextUnformatted"):
+        psim.TextUnformatted(text)
 
 
 # ==============================================================================
@@ -99,6 +105,8 @@ class UI_Menu:
         self._show_global_lm = True
         self._show_neck_lm = True
         self._show_armhole_lm = True
+        self._show_waist_lm = True
+        self._show_thigh_lm = True
 
     # --------------------------------------------------------------------------
     # Combo list builder
@@ -160,6 +168,9 @@ class UI_Menu:
             psim.TreePop()
         if psim.TreeNode("E. Derived Landmarks"):
             self._panel_derived()
+            psim.TreePop()
+        if psim.TreeNode("F. Face Anonymization"):
+            self._panel_face_anon()
             psim.TreePop()
 
     # --------------------------------------------------------------------------
@@ -420,9 +431,16 @@ class UI_Menu:
             self._geo_start_idx = min(self._geo_start_idx, n - 1)
             self._geo_end_idx   = min(self._geo_end_idx,   n - 1)
 
-            _, self._geo_start_idx = psim.SliderInt("Start##geo_start", self._geo_start_idx, 0, n - 1)
+            slider_int = getattr(psim, "SliderInt", None)
+            if slider_int is not None:
+                _, self._geo_start_idx = slider_int("Start##geo_start", self._geo_start_idx, 0, n - 1)
+            else:
+                _, self._geo_start_idx = psim.Combo("Start##geo_start", self._geo_start_idx, lm_names)
             psim.TextUnformatted(f"  {lm_names[self._geo_start_idx]}")
-            _, self._geo_end_idx = psim.SliderInt("End##geo_end",   self._geo_end_idx,   0, n - 1)
+            if slider_int is not None:
+                _, self._geo_end_idx = slider_int("End##geo_end", self._geo_end_idx, 0, n - 1)
+            else:
+                _, self._geo_end_idx = psim.Combo("End##geo_end", self._geo_end_idx, lm_names)
             psim.TextUnformatted(f"  {lm_names[self._geo_end_idx]}")
             pt_a = c.ss_lm_dict[lm_names[self._geo_start_idx]]
             pt_b = c.ss_lm_dict[lm_names[self._geo_end_idx]]
@@ -473,7 +491,7 @@ class UI_Menu:
     def _panel_derived(self):
         c = self.content
 
-        can_compute = c.mesh_ss is not None and bool(c.ss_lm_dict)
+        can_compute = getattr(c, "mesh_ss", None) is not None and bool(getattr(c, "ss_lm_dict", {}))
         if not can_compute:
             _warn("Load SizeStream mesh + landmarks first")
             return
@@ -481,6 +499,7 @@ class UI_Menu:
         if psim.Button("Compute / Initialize"):
             try:
                 c.compute_derived_landmarks()
+                c.register_waist_contours()
                 c.compute_shoulder_measurements()
                 self._derived_computed = True
                 self._derived_weights = {
@@ -535,6 +554,32 @@ class UI_Menu:
             try:
                 if ps.has_point_cloud("Derived_Armhole"):
                     ps.get_point_cloud("Derived_Armhole").set_enabled(self._show_armhole_lm)
+                for cn in ("ArmholeLeft_Contour", "ArmholeRight_Contour"):
+                    if ps.has_curve_network(cn):
+                        ps.get_curve_network(cn).set_enabled(self._show_armhole_lm)
+            except Exception:
+                pass
+
+        ch4, self._show_waist_lm = psim.Checkbox("Show Waist Derived", self._show_waist_lm)
+        if ch4:
+            try:
+                if ps.has_point_cloud("Derived_Waist"):
+                    ps.get_point_cloud("Derived_Waist").set_enabled(self._show_waist_lm)
+                for cn in ("Waist_Contour", "Bust_Contour"):
+                    if ps.has_curve_network(cn):
+                        ps.get_curve_network(cn).set_enabled(self._show_waist_lm)
+            except Exception:
+                pass
+
+        ch5, self._show_thigh_lm = psim.Checkbox("Show Thigh Derived", self._show_thigh_lm)
+        if ch5:
+            try:
+                for cn in ("LeftThigh_Contour", "RightThigh_Contour"):
+                    if ps.has_curve_network(cn):
+                        ps.get_curve_network(cn).set_enabled(self._show_thigh_lm)
+                for cn in ("Thigh_Left_Landmarks", "Thigh_Right_Landmarks"):
+                    if ps.has_point_cloud(cn):
+                        ps.get_point_cloud(cn).set_enabled(self._show_thigh_lm)
             except Exception:
                 pass
 
@@ -550,9 +595,15 @@ class UI_Menu:
                 for lm_name, info in c.derived_lm_dict.items():
                     if info["family"] != family:
                         continue
-                    if psim.TreeNode(lm_name):
-                        self._render_landmark_sliders(lm_name, info)
-                        psim.TreePop()
+                    if family == "Waist":
+                        if psim.TreeNode(lm_name):
+                            pos = self._derived_positions[lm_name]
+                            psim.TextUnformatted(f"  Pos: [{pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f}]")
+                            psim.TreePop()
+                    else:
+                        if psim.TreeNode(lm_name):
+                            self._render_landmark_sliders(lm_name, info)
+                            psim.TreePop()
                 psim.TreePop()
 
         # -- Measurements collapsible --
@@ -561,11 +612,17 @@ class UI_Menu:
             for meas_name, vals in self._measurements_cache.items():
                 geo_val = vals.get("geodesic", 0)
                 y_val = vals.get("y_projection", 0)
+                arc_val = vals.get("arc_length", 0)
+                euc_val = vals.get("euclidean", 0)
                 stale = " *" if self._geo_needs_refresh else ""
                 if geo_val > 0 and y_val > 0:
                     _ok(f"{meas_name}: geo {geo_val:.1f}mm  dY {y_val:.1f}mm{stale}")
                 elif geo_val > 0:
                     _ok(f"{meas_name}: geo {geo_val:.1f}mm{stale}")
+                elif arc_val > 0:
+                    _ok(f"{meas_name}: arc {arc_val:.1f}mm")
+                elif euc_val > 0:
+                    _ok(f"{meas_name}: dist {euc_val:.1f}mm")
                 elif y_val > 0:
                     psim.TextUnformatted(f"  {meas_name}: dY {y_val:.1f}mm")
             psim.TreePop()
@@ -851,9 +908,29 @@ class UI_Menu:
             self._set_status("No measurements to export", "warn")
             return
         sid = c.current_subject or "unknown"
+        from data_loader import PROCESSED_DIR
         out_path = str(PROCESSED_DIR / f"{sid}_v3_results.xlsx")
         try:
             c.export_results_to_excel(out_path)
             self._set_status(f"Exported to {out_path}", "ok")
         except Exception as e:
             self._set_status(f"Export failed: {e}", "err")
+
+    def _panel_face_anon(self):
+        c = self.content
+        if getattr(c, "mesh_ss", None) is None or not getattr(c, "ss_lm_dict", {}):
+            _warn("Load SizeStream mesh + landmarks first")
+            return
+        if psim.Button("Anonymize Face"):
+            try:
+                n_sel, n_after = c.anonymize_face(target_ratio=0.05)
+                stats = getattr(c, "face_anonymization_stats", None)
+                detail = ""
+                if stats is not None:
+                    detail = f", max move {stats.max_displacement_mm:.1f}mm"
+                self._set_status(
+                    f"Face anonymized: {n_sel} faces softened, mesh kept {n_after} faces{detail}",
+                    "ok"
+                )
+            except Exception as e:
+                self._set_status(f"Face anonymization failed: {e}", "err")

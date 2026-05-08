@@ -37,6 +37,17 @@
 
 注意：遗漏任何一步都会导致启动时 `ConfigError`。`_require_commented_object()` 会拒绝 JSON 中的未知 key，也会拒绝缺少 `__comment` 的 key。
 
+## 添加 Derived Landmark / Measurement
+
+`config/derived_landmarks.yaml` 使用独立的 YAML 配置路径（不经过 `config_loader.py`）：
+
+1. **YAML 文件**：在 `config/derived_landmarks.yaml` → `landmarks` section 添加新 landmark（需含 `triangle`, `init_method`, `init_params`, `family`, `weights: null`）；在 `measurements` section 添加对应度量
+2. **如需名称映射**：在 `landmark_name_map` 中添加规范名 → 数据集实际名映射
+3. **如需新 init_method**：在 `derived_landmarks.py` 中用 `@_register_init("method_name")` 装饰器注册新函数
+4. **Wiki**：更新 `settled.md` Derived Landmarks 表 + `data_contracts.md` YAML schema 说明
+
+注意：PyYAML 写入时不保留 YAML 注释。无 `key__comment` 要求。
+
 ## 添加新模块
 
 1. 在 `002_Architecture/` 下创建 `new_module/design.md` + `discussion/.gitkeep`

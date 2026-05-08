@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Bash(/d/conda/envs/FastIKD/python.exe *)",
+      "PowerShell(D:\\\\conda\\\\envs\\\\FastIKD\\\\python.exe *)",
       "Bash(wc -l /e/DropboxFolder/Dropbox/20-CapSensorDesignOpt/2-SimEnv/1-simVisCode/3-FR5-StreamingSys/0-OldSysm/*.py)",
       "Bash(grep -h \"^import\\\\|^from\" /e/DropboxFolder/Dropbox/20-CapSensorDesignOpt/2-SimEnv/1-simVisCode/3-FR5-StreamingSys/0-OldSysm/*.py)",
       "Bash(/d/conda/envs/FastIKD/python.exe -m pytest tests/test_phase7_toolchange.py -v)",
@@ -113,7 +115,10 @@
       "Bash(python -c \"import yaml; config = yaml.safe_load\\(open\\('config.yaml', encoding='utf-8'\\)\\); print\\('Config loaded successfully'\\)\")",
       "Bash(python -c \"import sys; print\\(sys.path[:3]\\)\")",
       "Bash(\"D:\\\\conda\\\\envs\\\\FastIKD\\\\python.exe\" -m pytest tests/test_config_newspline_phase1.py -v)",
-      "Read(//e/DropboxFolder/Dropbox/20-DropboxFolder/Dropbox/20-CapSensorDesignOpt/2-SimEnv/1-simVisCode/3-FR5-StreamingSys/visualization/**)"
+      "Read(//e/DropboxFolder/Dropbox/20-DropboxFolder/Dropbox/20-CapSensorDesignOpt/2-SimEnv/1-simVisCode/3-FR5-StreamingSys/visualization/**)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:trimesh.org)",
+      "WebFetch"
     ],
     "additionalDirectories": [
       "E:\\DropboxFolder\\Dropbox\\20-CapSensorDesignOpt\\2-SimEnv\\1-simVisCode\\3-FR5-StreamingSys\\.git"

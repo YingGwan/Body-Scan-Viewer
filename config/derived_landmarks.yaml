@@ -1,172 +1,376 @@
 version: 1
-
-# Landmark name aliases: map canonical names used in this config
-# to actual names in the dataset. Override when switching datasets.
-# If a name is not listed here, it is used as-is.
 landmark_name_map:
-  NeckLeft: "Mid Neck Left"
-  NeckRight: "Mid Neck Right"
+  NeckLeft: Mid Neck Left
+  NeckRight: Mid Neck Right
   NeckFront: NeckFront
   NeckBack: NeckBack
-
+  BustWithDropFront: Bust With Drop Front
 landmarks:
-
   NeckFrontLeft:
-    triangle: [NeckFront, NeckLeft, NeckBack]
-    weights: null
+    triangle:
+    - NeckFront
+    - NeckLeft
+    - NeckBack
+    weights:
+    - 1.156999945640564
+    - 0.8920903205871582
+    - -1.0490902662277222
     init_method: plane_intersection
     init_params:
       coronal_landmark: NeckFront
       sagittal_landmark: NeckLeft
     family: Neck
-
   NeckFrontRight:
-    triangle: [NeckFront, NeckRight, NeckBack]
+    triangle:
+    - NeckFront
+    - NeckRight
+    - NeckBack
     weights: null
     init_method: plane_intersection
     init_params:
       coronal_landmark: NeckFront
       sagittal_landmark: NeckRight
     family: Neck
-
   NeckBackLeft:
-    triangle: [NeckBack, NeckLeft, NeckFront]
+    triangle:
+    - NeckBack
+    - NeckLeft
+    - NeckFront
     weights: null
     init_method: plane_intersection
     init_params:
       coronal_landmark: NeckBack
       sagittal_landmark: NeckLeft
     family: Neck
-
   NeckBackRight:
-    triangle: [NeckBack, NeckRight, NeckFront]
+    triangle:
+    - NeckBack
+    - NeckRight
+    - NeckFront
     weights: null
     init_method: plane_intersection
     init_params:
       coronal_landmark: NeckBack
       sagittal_landmark: NeckRight
     family: Neck
-
   ArmholeDepthFrontLeft:
-    triangle: [ShoulderLeft, ArmpitLeft, NeckLeft]
+    triangle:
+    - ShoulderLeft
+    - ArmpitLeft
+    - NeckLeft
     weights: null
     init_method: contour_z_extremum
     init_params:
       extremum: max
-      plane_landmarks: [ShoulderLeft, ArmpitLeft]
+      plane_landmarks:
+      - ShoulderLeft
+      - ArmpitLeft
     family: Armhole
-
   ArmholeDepthBackLeft:
-    triangle: [ShoulderLeft, ArmpitLeft, NeckBack]
+    triangle:
+    - ShoulderLeft
+    - ArmpitLeft
+    - NeckBack
     weights: null
     init_method: contour_z_extremum
     init_params:
       extremum: min
-      plane_landmarks: [ShoulderLeft, ArmpitLeft]
+      plane_landmarks:
+      - ShoulderLeft
+      - ArmpitLeft
     family: Armhole
-
   ArmholeDepthFrontRight:
-    triangle: [ShoulderRight, ArmpitRight, NeckRight]
+    triangle:
+    - ShoulderRight
+    - ArmpitRight
+    - NeckRight
     weights: null
     init_method: contour_z_extremum
     init_params:
       extremum: max
-      plane_landmarks: [ShoulderRight, ArmpitRight]
+      plane_landmarks:
+      - ShoulderRight
+      - ArmpitRight
     family: Armhole
-
   ArmholeDepthBackRight:
-    triangle: [ShoulderRight, ArmpitRight, NeckBack]
+    triangle:
+    - ShoulderRight
+    - ArmpitRight
+    - NeckBack
     weights: null
     init_method: contour_z_extremum
     init_params:
       extremum: min
-      plane_landmarks: [ShoulderRight, ArmpitRight]
+      plane_landmarks:
+      - ShoulderRight
+      - ArmpitRight
     family: Armhole
-
+  WaistDartFrontLeft:
+    triangle:
+    - WaistFront
+    - WaistLeft
+    - BustWithDropFront
+    weights: null
+    init_method: three_plane_intersection
+    init_params:
+      apex_landmark: ApexBustLeft
+      bust_front_landmark: BustWithDropFront
+      bust_side_landmark: BustLeft
+      waist_plane_landmark: WaistFront
+    family: Waist
+  WaistDartFrontRight:
+    triangle:
+    - WaistFront
+    - WaistRight
+    - BustWithDropFront
+    weights: null
+    init_method: three_plane_intersection
+    init_params:
+      apex_landmark: ApexBustRight
+      bust_front_landmark: BustWithDropFront
+      bust_side_landmark: BustRight
+      waist_plane_landmark: WaistFront
+    family: Waist
+  WaistDartBackLeft:
+    triangle:
+    - WaistBack
+    - WaistLeft
+    - WaistFront
+    weights: null
+    init_method: arc_length_ratio
+    init_params:
+      start_landmark: WaistBack
+      end_landmark: WaistLeft
+      ratio: 0.5
+      plane_landmark: WaistBack
+    family: Waist
+  WaistDartBackRight:
+    triangle:
+    - WaistBack
+    - WaistRight
+    - WaistFront
+    weights: null
+    init_method: arc_length_ratio
+    init_params:
+      start_landmark: WaistBack
+      end_landmark: WaistRight
+      ratio: 0.5
+      plane_landmark: WaistBack
+    family: Waist
+  WaistDartUpperBackLeft:
+    triangle:
+    - BustBack
+    - BustLeft
+    - BustFront
+    weights: null
+    init_method: arc_length_ratio
+    init_params:
+      start_landmark: BustBack
+      end_landmark: BustLeft
+      ratio: 0.5
+      plane_landmark: BustBack
+    family: Waist
+  WaistDartUpperBackRight:
+    triangle:
+    - BustBack
+    - BustRight
+    - BustFront
+    weights: null
+    init_method: arc_length_ratio
+    init_params:
+      start_landmark: BustBack
+      end_landmark: BustRight
+      ratio: 0.5
+      plane_landmark: BustBack
+    family: Waist
 measurements:
-
-  # Neck geodesics: each new neck landmark connected to its two source landmarks
   NeckFrontLeft_to_NeckFront:
     type: geodesic
     from: NeckFrontLeft
     to: NeckFront
     family: Neck
     also_output_y_projection: false
-
   NeckFrontLeft_to_NeckLeft:
     type: geodesic
     from: NeckFrontLeft
     to: NeckLeft
     family: Neck
     also_output_y_projection: false
-
   NeckFrontRight_to_NeckFront:
     type: geodesic
     from: NeckFrontRight
     to: NeckFront
     family: Neck
     also_output_y_projection: false
-
   NeckFrontRight_to_NeckRight:
     type: geodesic
     from: NeckFrontRight
     to: NeckRight
     family: Neck
     also_output_y_projection: false
-
   NeckBackLeft_to_NeckBack:
     type: geodesic
     from: NeckBackLeft
     to: NeckBack
     family: Neck
     also_output_y_projection: false
-
   NeckBackLeft_to_NeckLeft:
     type: geodesic
     from: NeckBackLeft
     to: NeckLeft
     family: Neck
     also_output_y_projection: false
-
   NeckBackRight_to_NeckBack:
     type: geodesic
     from: NeckBackRight
     to: NeckBack
     family: Neck
     also_output_y_projection: false
-
   NeckBackRight_to_NeckRight:
     type: geodesic
     from: NeckBackRight
     to: NeckRight
     family: Neck
     also_output_y_projection: false
-
-  # Shoulder geodesics
   MidShoulderToApexLeft:
     type: geodesic
-    from: "Mid Shoulder Left"
+    from: Mid Shoulder Left
     to: ApexBustLeft
     family: Shoulder
     also_output_y_projection: true
-
   MidShoulderToApexRight:
     type: geodesic
-    from: "Mid Shoulder Right"
+    from: Mid Shoulder Right
     to: ApexBustRight
     family: Shoulder
     also_output_y_projection: true
-
   ApexToLowerBustLeft:
     type: geodesic
     from: ApexBustLeft
     to: LowerBustLeft
     family: Shoulder
     also_output_y_projection: true
-
   ApexToLowerBustRight:
     type: geodesic
     from: ApexBustRight
     to: LowerBustRight
     family: Shoulder
     also_output_y_projection: true
+  WaistArcA_Left:
+    type: arc_length
+    from: WaistFront
+    to: WaistDartFrontLeft
+    plane_landmark: WaistFront
+    family: Waist
+  WaistArcA_Right:
+    type: arc_length
+    from: WaistFront
+    to: WaistDartFrontRight
+    plane_landmark: WaistFront
+    family: Waist
+  WaistArcB_Left:
+    type: arc_length
+    from: WaistBack
+    to: WaistDartBackLeft
+    plane_landmark: WaistBack
+    family: Waist
+  WaistArcB_Right:
+    type: arc_length
+    from: WaistBack
+    to: WaistDartBackRight
+    plane_landmark: WaistBack
+    family: Waist
+  BustArcC_Left:
+    type: arc_length
+    from: BustFront
+    to: BustLeft
+    plane_landmark: BustFront
+    family: Waist
+  BustArcC_Right:
+    type: arc_length
+    from: BustFront
+    to: BustRight
+    plane_landmark: BustFront
+    family: Waist
+  BustArcD_Left:
+    type: arc_length
+    from: BustFront
+    to: ApexBustLeft
+    plane_landmark: BustFront
+    family: Waist
+  BustArcD_Right:
+    type: arc_length
+    from: BustFront
+    to: ApexBustRight
+    plane_landmark: BustFront
+    family: Waist
+  ApexToWaistDartFrontLeft:
+    type: euclidean
+    from: ApexBustLeft
+    to: WaistDartFrontLeft
+    family: Waist
+  ApexToWaistDartFrontRight:
+    type: euclidean
+    from: ApexBustRight
+    to: WaistDartFrontRight
+    family: Waist
+  BustBack_to_DartUpperBackLeft:
+    type: arc_length
+    from: BustBack
+    to: WaistDartUpperBackLeft
+    plane_landmark: BustBack
+    family: Waist
+  BustBack_to_DartUpperBackRight:
+    type: arc_length
+    from: BustBack
+    to: WaistDartUpperBackRight
+    plane_landmark: BustBack
+    family: Waist
+  LeftThigh_Front_to_Left:
+    type: arc_length
+    from: UpperLeftThighFront
+    to: UpperLeftThighLeft
+    plane_landmark: UpperLeftThighFront
+    family: Thigh
+  LeftThigh_Left_to_Back:
+    type: arc_length
+    from: UpperLeftThighLeft
+    to: UpperLeftThighBack
+    plane_landmark: UpperLeftThighFront
+    family: Thigh
+  LeftThigh_Back_to_Right:
+    type: arc_length
+    from: UpperLeftThighBack
+    to: UpperLeftThighRight
+    plane_landmark: UpperLeftThighFront
+    family: Thigh
+  LeftThigh_Right_to_Front:
+    type: arc_length
+    from: UpperLeftThighRight
+    to: UpperLeftThighFront
+    plane_landmark: UpperLeftThighFront
+    family: Thigh
+  RightThigh_Front_to_Left:
+    type: arc_length
+    from: UpperRightThighFront
+    to: UpperRightThighLeft
+    plane_landmark: UpperRightThighFront
+    family: Thigh
+  RightThigh_Left_to_Back:
+    type: arc_length
+    from: UpperRightThighLeft
+    to: UpperRightThighBack
+    plane_landmark: UpperRightThighFront
+    family: Thigh
+  RightThigh_Back_to_Right:
+    type: arc_length
+    from: UpperRightThighBack
+    to: UpperRightThighRight
+    plane_landmark: UpperRightThighFront
+    family: Thigh
+  RightThigh_Right_to_Front:
+    type: arc_length
+    from: UpperRightThighRight
+    to: UpperRightThighFront
+    plane_landmark: UpperRightThighFront
+    family: Thigh

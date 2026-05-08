@@ -52,14 +52,54 @@
 | 坐标系 | 可能与 PLY mesh 不同轴；通过 24 旋转候选 + ICP 对齐 |
 | 对齐方法 | `data_loader.py:align_caesar_landmarks_to_mesh()` — 遍历所有 proper rotation，centroid align + ICP refine，取 mean mesh error 最低者 |
 
-### Derived Landmarks（切片交线计算得出）
+### Derived Landmarks（重心坐标参数化）
 
-| ID | Name | 生成规则 | 依赖的原始 landmarks | 切面定义 |
-|---|---|---|---|---|
-| — | 尚未定义 | UNSET | UNSET | UNSET |
+所有 derived landmarks 使用统一的重心坐标参数化模式：
+1. 选 3 个已有 landmark 构成参考三角形 (`triangle`)
+2. 用 `init_method`（几何法）计算初始 3D 位置
+3. 反算重心坐标 (α, β, γ)，α + β + γ = 1
+4. 投影到 mesh 表面（`trimesh.proximity.closest_point`）
+5. 权重保存到 `config/derived_landmarks.yaml`，跨 subject 复用
+6. GUI 滑块可实时微调权重
+
+配置来源：`config/derived_landmarks.yaml`（version: 1），由 `derived_landmarks.py:load_derived_landmark_config()` 加载。
+名称映射：`landmark_name_map` 将规范名映射到数据集实际名（如 `NeckLeft` → `"Mid Neck Left"`），由 `derived_landmarks.py:resolve_landmark_name()` 解析。
+
+#### 已实现 Landmarks (8)
+
+| Name | Family | init_method | Triangle | init_params |
+|------|--------|-------------|----------|-------------|
+| NeckFrontLeft | Neck | `plane_intersection` | NeckFront, NeckLeft, NeckBack | coronal=NeckFront, sagittal=NeckLeft |
+| NeckFrontRight | Neck | `plane_intersection` | NeckFront, NeckRight, NeckBack | coronal=NeckFront, sagittal=NeckRight |
+| NeckBackLeft | Neck | `plane_intersection` | NeckBack, NeckLeft, NeckFront | coronal=NeckBack, sagittal=NeckLeft |
+| NeckBackRight | Neck | `plane_intersection` | NeckBack, NeckRight, NeckFront | coronal=NeckBack, sagittal=NeckRight |
+| ArmholeDepthFrontLeft | Armhole | `contour_z_extremum` | ShoulderLeft, ArmpitLeft, NeckLeft | extremum=max, plane=[ShoulderLeft, ArmpitLeft] |
+| ArmholeDepthBackLeft | Armhole | `contour_z_extremum` | ShoulderLeft, ArmpitLeft, NeckBack | extremum=min, plane=[ShoulderLeft, ArmpitLeft] |
+| ArmholeDepthFrontRight | Armhole | `contour_z_extremum` | ShoulderRight, ArmpitRight, NeckRight | extremum=max, plane=[ShoulderRight, ArmpitRight] |
+| ArmholeDepthBackRight | Armhole | `contour_z_extremum` | ShoulderRight, ArmpitRight, NeckBack | extremum=min, plane=[ShoulderRight, ArmpitRight] |
+
+#### 已定义 Landmarks (6 — init_method 已实现，待跨 subject 数据验证)
+
+| Name | Family | init_method | Triangle | 状态 |
+|------|--------|-------------|----------|------|
+| WaistDartFrontLeft | Waist | `three_plane_intersection` | WaistFront, WaistLeft, BustWithDropFront | init_method done，待数据验证 |
+| WaistDartFrontRight | Waist | `three_plane_intersection` | WaistFront, WaistRight, BustWithDropFront | init_method done，待数据验证 |
+| WaistDartBackLeft | Waist | `arc_length_ratio` | WaistBack, WaistLeft, WaistFront | init_method done，待数据验证 |
+| WaistDartBackRight | Waist | `arc_length_ratio` | WaistBack, WaistRight, WaistFront | init_method done，待数据验证 |
+| WaistDartUpperBackLeft | Waist | `arc_length_ratio` | BustBack, BustLeft, BustFront | init_method done，待数据验证 |
+| WaistDartUpperBackRight | Waist | `arc_length_ratio` | BustBack, BustRight, BustFront | init_method done，待数据验证 |
+
+#### init_method 注册表
+
+| Method | 算法 | 状态 |
+|--------|------|------|
+| `contour_z_extremum` | 两点定义平面切 mesh → 取截面轮廓 Z 极值点 | done |
+| `plane_intersection` | 冠状面 × 矢状面 → 法向方向 raycast mesh 表面交点 | done |
+| `arc_length_ratio` | 横截面环上按弧长比例插值点（Shapely ring.project/interpolate） | done |
+| `three_plane_intersection` | Apex 沿 BustFront-BustSide 垂线投影到 Waist 横截面环 | done |
 
 规则：
-- 原始 landmark：只能来自上述两个 schema 表。外部数据的 landmark 必须通过 mapping 表进入。
+- 原始 landmark：只能来自上述两个 schema 表。外部数据的 landmark 必须通过 `landmark_name_map` 进入。
 - Derived landmark：生成规则在本表冻结。修改生成规则 = 新的 landmark ID。
 - 不同论文中的同名 landmark 不自动等价。
 - SS 和 CAESAR landmark 是两套独立 schema，名称不同，不做自动匹配。
@@ -78,21 +118,24 @@
 | 质量评级 | fitness<0.1=Failed; RMSE<5mm=Excellent; <15mm=Acceptable | `project_config.json → registration.quality` | **是** |
 | Transform 链 | T_total = T_icp @ T_centroid @ T_swap | `registration.py:run_icp_registration()` | 否（数学定义） |
 
-## 面部匿名化约定（未来功能）
+## 面部匿名化约定（已实现）
 
-| 属性 | 值 |
-|------|---|
-| 定义圆的 landmark 对 | UNSET |
-| 定义圆的平面 | UNSET |
-| 圆的 fit 方式 | UNSET |
-| 投影方式 | UNSET |
-| 简化方法 | PyMeshLab（具体 filter：UNSET） |
-| 简化后拓扑要求 | UNSET |
+| 属性 | 值 | 来源 |
+|------|---|------|
+| 区域选择 | Chin + Head Circum Front + Head Circum Right (required); Head Circum Left (optional) | `face_anonymization.py:select_face_region()` |
+| 选择算法 | Chin+HCF 中心定义椭圆 (dx²+dy² ≤ 1.0)，HCR 定义 Z 深度范围 (back_z ~ front_z)，椭圆 ∩ 深度范围内的 vertex 被选中 | `face_anonymization.py:select_face_region()` |
+| 简化方法 | **Open3D quadric decimation** 生成 proxy surface | `face_anonymization.py:_build_decimated_proxy()` |
+| 简化目标比例 | `target_ratio=0.05`（默认保留 5% 面片） | `face_anonymization.py:anonymize_face_open3d()` |
+| 顶点平滑 | 选中顶点向 proxy 表面 + 邻域平滑混合位移 | `face_anonymization.py:anonymize_face_open3d()` |
+| 边界过渡 | smoothstep falloff，`boundary_falloff_mm=35.0` | `face_anonymization.py:_boundary_falloff()` |
+| 拓扑约定 | 不切割不拼接；原 mesh 保留全部 vertex/face，仅移动选中顶点位置 | mesh topology integrity |
+| 拓扑验证 | 匿名化前后比较 boundary edges、non-manifold edges、connected components | `face_anonymization.py:boundary_edge_counts()`, `connected_component_face_counts()` |
 
-规则（预设）：
+规则：
 - 匿名化区域不得包含下游 pipeline 需要的 landmark。
-- 匿名化后的 mesh 必须通过与原 mesh 相同的拓扑检查。
+- 匿名化后的 mesh 必须通过与原 mesh 相同的拓扑检查（boundary edges / non-manifold edges / components 不变）。
 - 匿名化是不可逆操作。原始 mesh 必须保留。
+- 不使用 cut-and-stitch；顶点位置原地修改，mesh 拓扑不变。
 
 ## 切面定义约定（未来功能）
 
@@ -109,12 +152,23 @@
 | Landmark Euclidean distance | SS landmark 到 registered CAESAR surface 的最近点距离 | SS landmark 位置 + registered CAESAR mesh | `trimesh.proximity.closest_point()` | mm |
 | Per-vertex distance | SS mesh 每个顶点到 registered CAESAR surface 的最近点距离（热图） | SS mesh vertices + registered CAESAR mesh | `trimesh.proximity.closest_point()` | mm |
 
+### V3 Derived Landmark 度量（已实现 / 部分实现）
+
+| 度量名称 | 数学定义 | 输入 | 算法 | 单位 | 状态 |
+|---------|---------|------|------|------|------|
+| Neck geodesic (×8) | derived Neck landmark → 其两个源 original landmark 之间的 mesh surface 最短路径 | 2 个 3D 点 | potpourri3d exact / Dijkstra fallback | mm | done |
+| Shoulder geodesic (×4) | MidShoulder→Apex, Apex→LowerBust (左右各一) | 2 个 3D 点 | potpourri3d exact / Dijkstra fallback | mm | done |
+| Y-projection distance (×4) | `|y1 - y2|`，两 landmark 间的纯高度差 | 2 个 3D 点 | 坐标差绝对值 | mm | done |
+| Arc length (Waist ×10 + Thigh ×8) | 横截面环上两点间的弧长 | 2 个 3D 点 + `plane_landmark` 定义切面 | Shapely `ring.project()` + `ring.length` 差 | mm | done (init_method + measurement 引擎均已实现) |
+| Euclidean 3D (×2) | 两 landmark 的 3D 直线距离 | 2 个 3D 点 | `np.linalg.norm(p1-p2)` | mm | done |
+
+配置来源：`config/derived_landmarks.yaml` → `measurements` section (32 条度量定义)。
+
 ### 待定义（未来）
 
 | 度量名称 | 数学定义 | 输入 landmarks | 算法 | 单位 |
 |---------|---------|---------------|------|------|
-| 围度 (circumference) | UNSET | UNSET | UNSET | UNSET |
-| 弧长 (arc length) | UNSET | UNSET | UNSET | UNSET |
+| 围度 (circumference) | 截面轮廓完整周长 | 切面定义 landmark | 依赖切片模块 | UNSET |
 
 规则：
 - 每个度量的计算公式必须先在本表定义，代码再实现。
@@ -138,10 +192,15 @@
 
 | 属性 | 值 |
 |------|---|
-| 配置分离 | `project_config.json`（数据/算法参数）+ `render_config.json`（视觉外观） |
-| Schema 版本 | 两个文件均为 `version: 1` |
-| 注释要求 | 每个 key 必须有对应 `key__comment` | `config_loader.py:_require_commented_object()` |
-| 验证方式 | 启动时严格 schema 验证，失败即 raise `ConfigError` |
+| JSON 配置分离 | `project_config.json`（数据/算法参数）+ `render_config.json`（视觉外观） |
+| JSON Schema 版本 | 两个文件均为 `version: 1` |
+| JSON 注释要求 | 每个 key 必须有对应 `key__comment` | `config_loader.py:_require_commented_object()` |
+| JSON 验证方式 | 启动时严格 schema 验证，失败即 raise `ConfigError` |
+| YAML 配置 | `config/derived_landmarks.yaml`（derived landmarks + measurements 定义） |
+| YAML Schema 版本 | `version: 1` |
+| YAML 加载 | `derived_landmarks.py:load_derived_landmark_config()` — 懒加载，首次计算时触发 |
+| YAML 写入 | `derived_landmarks.py:save_weights_to_yaml()` — 单 landmark 权重原地更新 |
+| YAML 注意 | PyYAML 不保留 YAML 注释（已知限制） |
 | 路径解析 | 相对路径相对于 `PROJECT_ROOT`（`config_loader.py` 所在目录） |
 
 ## 明确不做的事

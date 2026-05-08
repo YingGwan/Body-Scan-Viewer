@@ -34,7 +34,7 @@ last_verified: 2026-05-08
 
 **Required checks:** settled.md derived landmarks 表的 ID 唯一性 + version tracking。
 
-**Code anchors:** 当前无（derived landmarks 尚未实现）。
+**Code anchors:** `derived_landmarks.py` — landmark ID 来自 `config/derived_landmarks.yaml`；YAML `landmark_name_map` 提供名称映射；权重变更保留旧 ID（`save_weights_to_yaml()` 仅更新权重字段）。
 
 ## L3 — Cross-Source Name Equivalence
 

@@ -18,7 +18,6 @@ import pathlib
 import re
 import itertools
 import numpy as np
-import pandas as pd
 from dataclasses import dataclass, field
 from typing import Optional
 from config_loader import APP_CONFIG
@@ -206,7 +205,11 @@ def load_ss_landmarks(xlsx_path: str) -> dict:
           'landmarks_3d':        {name: np.array(n_subjects, 3)},
         }
     """
-    df = pd.read_excel(xlsx_path, sheet_name='Sheet1', header=None, engine='openpyxl')
+    try:
+        import pandas as pd
+        df = pd.read_excel(xlsx_path, sheet_name='Sheet1', header=None, engine='openpyxl')
+    except (ModuleNotFoundError, ImportError):
+        return _load_ss_landmarks_from_txt_export(xlsx_path)
 
     # --- Step 1: Dynamically discover subject columns (not hardcoded) ---
     header_row  = df.iloc[0]
@@ -272,6 +275,91 @@ def load_ss_landmarks(xlsx_path: str) -> dict:
     return {
         'subject_ids':         subject_ids,
         'col_indices':         col_indices,
+        'scalar_measurements': scalar_measurements,
+        'landmarks_3d':        landmarks_3d,
+    }
+
+
+def _load_ss_landmarks_from_txt_export(xlsx_path: str) -> dict:
+    """Fallback parser for the tab-delimited Spreadsheet.TXT export."""
+    xlsx = pathlib.Path(xlsx_path)
+    candidates = [
+        xlsx.with_name("Spreadsheet.TXT"),
+        xlsx.parent / "Spreadsheet.TXT",
+        xlsx.parent.parent / "Spreadsheet.TXT",
+        PROJECT_ROOT / "TODO" / "SORO MADE Garments" / "Spreadsheet.TXT",
+    ]
+    txt_path = next((p for p in candidates if p.exists()), None)
+    if txt_path is None:
+        raise ModuleNotFoundError(
+            "pandas/openpyxl are unavailable and Spreadsheet.TXT was not found"
+        )
+
+    lines = txt_path.read_text(encoding="utf-8").splitlines()
+    if len(lines) < 3:
+        raise ValueError(f"Spreadsheet.TXT is too short: {txt_path}")
+
+    headers = lines[1].split("\t")
+    data_rows = []
+    subject_ids = []
+    for line in lines[2:]:
+        cols = line.split("\t")
+        if not cols:
+            continue
+        match = re.search(r"SS_OUT_(csr\d+[a-z])", cols[0])
+        if match:
+            subject_ids.append(match.group(1))
+            data_rows.append(cols)
+
+    if not subject_ids:
+        raise ValueError(f"No SS_OUT_csr rows found in {txt_path}")
+
+    scalar_measurements = {}
+    landmarks_3d = {}
+    i = 1
+    while i < len(headers):
+        name = headers[i].strip()
+        if not name:
+            i += 1
+            continue
+
+        is_landmark = (
+            i + 2 < len(headers)
+            and headers[i + 1].strip() == ""
+            and headers[i + 2].strip() == ""
+        )
+        if is_landmark:
+            coords = []
+            valid = True
+            for row in data_rows:
+                try:
+                    coords.append([
+                        float(row[i]),
+                        float(row[i + 1]),
+                        float(row[i + 2]),
+                    ])
+                except (IndexError, ValueError):
+                    valid = False
+                    break
+            if valid:
+                landmarks_3d[name] = np.asarray(coords, dtype=float)
+            i += 3
+        else:
+            values = []
+            valid = True
+            for row in data_rows:
+                try:
+                    values.append(float(row[i]))
+                except (IndexError, ValueError):
+                    valid = False
+                    break
+            if valid:
+                scalar_measurements[name] = np.asarray(values, dtype=float)
+            i += 1
+
+    return {
+        'subject_ids':         subject_ids,
+        'col_indices':         list(range(len(subject_ids))),
         'scalar_measurements': scalar_measurements,
         'landmarks_3d':        landmarks_3d,
     }

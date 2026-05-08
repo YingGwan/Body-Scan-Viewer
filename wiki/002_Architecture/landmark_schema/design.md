@@ -22,8 +22,12 @@
 - 注意：此处使用 **Point-to-Point** ICP（轻量级，仅用于 landmark 对齐），不同于 `registration.py` 中的 **Point-to-Plane** ICP（两阶段，用于 mesh 配准）
 - 对齐后 **不** 投影到 mesh 表面（保留真实偏移）
 
-### Derived Landmarks（规划中）
-- 由切片交线或其他几何操作计算得出
+### Derived Landmarks（部分实现）
+- 使用统一的重心坐标参数化模式：3 个 reference landmark → init_method → barycentric coords → mesh surface projection
+- 配置来源：`config/derived_landmarks.yaml`（14 landmarks: 8 Neck/Armhole done + 6 Waist init_method done，待跨 subject 数据验证）
+- 名称映射：`landmark_name_map` 解析规范名到数据集实际名（`derived_landmarks.py:resolve_landmark_name()`）
+- 4 个 init_method：`contour_z_extremum`（done）、`plane_intersection`（done）、`arc_length_ratio`（done）、`three_plane_intersection`（done）
+- 权重持久化：saved weights 优先于 init_method 重新计算
 - 生成规则冻结在 `settled.md`
 
 ## 输入契约
@@ -60,7 +64,7 @@
 
 ## 状态
 
-- 已完成：SS XLSX 解析、CAESAR LND 解析、CAESAR landmark 对齐
-- 待实现：derived landmark 框架、SS↔CAESAR 名称映射表
+- 已完成：SS XLSX 解析、CAESAR LND 解析、CAESAR landmark 对齐、derived landmark 重心坐标框架（8 Neck/Armhole done + 6 Waist init_method done）
+- 待实现：6 Waist landmarks 跨 subject 数据验证 + 权重持久化、SS↔CAESAR 名称映射表
 
 上次更新：2026-05-08

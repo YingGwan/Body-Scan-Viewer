@@ -1,7 +1,7 @@
 # System Current State
 
 last_updated: 2026-05-08
-current_head: a4d0e4a
+current_head: fae0c66
 env: conda FastIKD (trimesh 4.11, shapely 2.0.7, rtree 1.4, PyYAML, potpourri3d, polyscope 2.5)
 
 ## 项目阶段
@@ -16,7 +16,7 @@ env: conda FastIKD (trimesh 4.11, shapely 2.0.7, rtree 1.4, PyYAML, potpourri3d,
 | Entry point | `main.py` | stable | |
 | Config loader | `config_loader.py` | stable | JSON-only，不管 YAML |
 | **Derived landmarks** | **`derived_landmarks.py`** | **active dev** | 通用框架：YAML 加载、重心坐标、init methods、测量 |
-| **Derived config** | **`config/derived_landmarks.yaml`** | **active dev** | 8 landmarks (4 Neck + 4 Armhole) + 12 measurements |
+| **Derived config** | **`config/derived_landmarks.yaml`** | **active dev** | 14 landmarks (4 Neck + 4 Armhole + 6 Waist) + 32 measurements |
 | Geometry backend | `geometry_backend.py` | **modified** | 新增 Panel E 方法：compute_derived_landmarks, compute_shoulder_measurements, export_results_to_excel |
 | GUI panel | `gui_panel.py` | **modified** | 新增 Panel E：交互式重心坐标滑块 + visibility checkboxes + Apply/Save/Load/Reset |
 | Data loader | `data_loader.py` | stable | |
@@ -24,6 +24,7 @@ env: conda FastIKD (trimesh 4.11, shapely 2.0.7, rtree 1.4, PyYAML, potpourri3d,
 | Geodesic utils | `geodesic_utils.py` | stable | |
 | Unit utils | `unit_utils.py` | stable | |
 | Color bar | `colorBar.py` | stable | |
+| **Face anonymization** | **`face_anonymization.py`** | **done** | Open3D proxy + vertex smoothing + boundary falloff |
 
 ## V3 Derived Landmarks — 当前实现状态
 
@@ -60,12 +61,12 @@ env: conda FastIKD (trimesh 4.11, shapely 2.0.7, rtree 1.4, PyYAML, potpourri3d,
 
 | Name | Family | init_method | 状态 |
 |------|--------|-------------|------|
-| WaistDartFrontLeft | Waist | three_plane_intersection | stub (NotImplementedError) |
-| WaistDartFrontRight | Waist | three_plane_intersection | stub |
-| WaistDartBackLeft | Waist | arc_length_ratio | stub |
-| WaistDartBackRight | Waist | arc_length_ratio | stub |
-| WaistDartUpperBackLeft | Waist | arc_length_ratio | stub |
-| WaistDartUpperBackRight | Waist | arc_length_ratio | stub |
+| WaistDartFrontLeft | Waist | three_plane_intersection | done（待跨 subject 数据验证） |
+| WaistDartFrontRight | Waist | three_plane_intersection | done（待数据验证） |
+| WaistDartBackLeft | Waist | arc_length_ratio | done（待数据验证） |
+| WaistDartBackRight | Waist | arc_length_ratio | done（待数据验证） |
+| WaistDartUpperBackLeft | Waist | arc_length_ratio | done（待数据验证） |
+| WaistDartUpperBackRight | Waist | arc_length_ratio | done（待数据验证） |
 
 ### init_method 实现状态
 
@@ -73,8 +74,8 @@ env: conda FastIKD (trimesh 4.11, shapely 2.0.7, rtree 1.4, PyYAML, potpourri3d,
 |--------|------|------|
 | `contour_z_extremum` | done | Armhole 4 点 |
 | `plane_intersection` | done | Neck 4 点 |
-| `arc_length_ratio` | stub | Waist Dart Back + Upper Back |
-| `three_plane_intersection` | stub | Waist Dart Front |
+| `arc_length_ratio` | done | Waist Dart Back + Upper Back |
+| `three_plane_intersection` | done | Waist Dart Front |
 
 ### GUI Panel E 功能
 
@@ -93,20 +94,22 @@ NeckLeft: "Mid Neck Left"
 NeckRight: "Mid Neck Right"
 NeckFront: NeckFront
 NeckBack: NeckBack
+BustWithDropFront: "Bust With Drop Front"
 ```
 config 中使用规范名（如 `NeckLeft`），运行时通过 `resolve_landmark_name()` 映射到数据集实际名称。
 
 ## 测试现状
 
-20 个测试，全部通过。运行方式：
+23 个测试，全部通过。运行方式：
 ```
-conda run -n FastIKD python -m pytest tests/test_derived_landmarks.py tests/test_shoulder_behavior.py -v
+conda run -n FastIKD python -m pytest tests/test_derived_landmarks.py tests/test_shoulder_behavior.py tests/test_face_anonymization.py -v
 ```
 
 | 测试文件 | 测试数 | 覆盖 |
 |---------|--------|------|
-| `tests/test_derived_landmarks.py` | 17 | 重心坐标、YAML I/O、init methods、compute_all、measurements |
+| `tests/test_derived_landmarks.py` | 19 | 重心坐标、YAML I/O、4 init methods、compute_all、measurements、arc_length、three_plane |
 | `tests/test_shoulder_behavior.py` | 3 | VisContent 集成、geodesic 测量、Excel 导出 |
+| `tests/test_face_anonymization.py` | 1 | Open3D proxy 面部匿名化拓扑保持验证 |
 
 ## 数据现状
 
@@ -132,10 +135,10 @@ conda run -n FastIKD python -m pytest tests/test_derived_landmarks.py tests/test
 按优先级排序：
 
 1. **跨 subject 验证**：在 4 个 subject 上跑 derived landmarks，检查重心坐标方差，如果稳定则 Save 权重到 YAML
-2. **Waist/Bust dart landmarks (6 个)**：实现 `arc_length_ratio` 和 `three_plane_intersection` init methods，用 Shapely `ring.project()/interpolate()`
+2. **Waist/Bust dart landmarks (6 个)**：init_methods 已实现，需在 4 个 subject 上跑数据验证 + 权重持久化
 3. **Thigh 四段弧长**：复用弧长引擎
 4. **统一 Excel 导出**：完善 `export_results_to_excel()` 加坐标导出规则（Z(0)=Crotch，仅导出时变换）
-5. **面部匿名化**：独立研究任务，需 PyMeshLab spike
+5. **面部匿名化**：已实现（Open3D quadric decimation proxy + boundary falloff），见 `face_anonymization.py`
 
 ## 已知 bug / 注意事项
 

@@ -135,16 +135,53 @@ def test_init_plane_intersection(shared_mesh_and_landmarks):
     assert 1250 < pt[1] < 1400
 
 
-def test_init_arc_length_ratio_stub():
-    from derived_landmarks import init_arc_length_ratio
-    with pytest.raises(NotImplementedError):
-        init_arc_length_ratio(None, {}, {})
+def test_init_arc_length_ratio(shared_mesh_and_landmarks):
+    from derived_landmarks import init_arc_length_ratio, load_derived_landmark_config
+    mesh, lms = shared_mesh_and_landmarks
+    cfg = load_derived_landmark_config("config/derived_landmarks.yaml")
+    params = {
+        "start_landmark": "WaistBack",
+        "end_landmark": "WaistLeft",
+        "ratio": 0.5,
+        "plane_landmark": "WaistBack",
+    }
+    pt = init_arc_length_ratio(mesh, lms, params, config=cfg)
+    assert pt.shape == (3,)
+    assert abs(pt[1] - lms["WaistBack"][1]) < 5.0
+    x_min = min(lms["WaistBack"][0], lms["WaistLeft"][0])
+    x_max = max(lms["WaistBack"][0], lms["WaistLeft"][0])
+    assert x_min <= pt[0] <= x_max
 
 
-def test_init_three_plane_intersection_stub():
-    from derived_landmarks import init_three_plane_intersection
-    with pytest.raises(NotImplementedError):
-        init_three_plane_intersection(None, {}, {})
+def test_init_arc_length_ratio_bust(shared_mesh_and_landmarks):
+    from derived_landmarks import init_arc_length_ratio, load_derived_landmark_config
+    mesh, lms = shared_mesh_and_landmarks
+    cfg = load_derived_landmark_config("config/derived_landmarks.yaml")
+    params = {
+        "start_landmark": "BustBack",
+        "end_landmark": "BustLeft",
+        "ratio": 0.5,
+        "plane_landmark": "BustBack",
+    }
+    pt = init_arc_length_ratio(mesh, lms, params, config=cfg)
+    assert pt.shape == (3,)
+    assert abs(pt[1] - lms["BustBack"][1]) < 5.0
+
+
+def test_init_three_plane_intersection(shared_mesh_and_landmarks):
+    from derived_landmarks import init_three_plane_intersection, load_derived_landmark_config
+    mesh, lms = shared_mesh_and_landmarks
+    cfg = load_derived_landmark_config("config/derived_landmarks.yaml")
+    params = {
+        "apex_landmark": "ApexBustLeft",
+        "bust_front_landmark": "BustWithDropFront",
+        "bust_side_landmark": "BustLeft",
+        "waist_plane_landmark": "WaistFront",
+    }
+    pt = init_three_plane_intersection(mesh, lms, params, config=cfg)
+    assert pt.shape == (3,)
+    assert abs(pt[1] - lms["WaistFront"][1]) < 5.0
+    assert pt[2] > 0, f"DartFrontLeft should be in front (Z>0), got Z={pt[2]:.1f}"
 
 
 def test_compute_derived_landmark_null_weights(shared_mesh_and_landmarks):
@@ -183,10 +220,13 @@ def test_compute_all_derived_landmarks(shared_mesh_and_landmarks):
     mesh, lms = shared_mesh_and_landmarks
     config = load_derived_landmark_config("config/derived_landmarks.yaml")
     result = compute_all_derived_landmarks(mesh, lms, config)
-    assert len(result) == 8
+    assert len(result) == 14
     for name in ["NeckFrontLeft", "NeckFrontRight", "NeckBackLeft", "NeckBackRight",
                  "ArmholeDepthFrontLeft", "ArmholeDepthBackLeft",
-                 "ArmholeDepthFrontRight", "ArmholeDepthBackRight"]:
+                 "ArmholeDepthFrontRight", "ArmholeDepthBackRight",
+                 "WaistDartFrontLeft", "WaistDartFrontRight",
+                 "WaistDartBackLeft", "WaistDartBackRight",
+                 "WaistDartUpperBackLeft", "WaistDartUpperBackRight"]:
         assert name in result
         assert result[name]["position"].shape == (3,)
         assert len(result[name]["weights"]) == 3
@@ -207,13 +247,41 @@ def test_compute_configured_measurements(shared_mesh_and_landmarks):
         return dist, np.array([pt_a, pt_b])
 
     records = compute_configured_measurements(
-        mesh, lms, derived_flat, config["measurements"], mock_geodesic
+        mesh, lms, derived_flat, config["measurements"], mock_geodesic, config=config,
     )
-    assert len(records) >= 8  # 4 geodesic + 4 y_projection
     families = {r.family for r in records}
     assert "Shoulder" in families
+    assert "Waist" in families
     methods = {r.method for r in records}
     assert "geodesic" in methods
     assert "y_projection" in methods
+    assert "arc_length" in methods
+    assert "euclidean" in methods
     for r in records:
         assert r.value_mm > 0
+
+
+def test_waist_arc_measurements_sanity(shared_mesh_and_landmarks):
+    from derived_landmarks import (
+        compute_configured_measurements, load_derived_landmark_config,
+        compute_all_derived_landmarks,
+    )
+    mesh, lms = shared_mesh_and_landmarks
+    config = load_derived_landmark_config("config/derived_landmarks.yaml")
+    derived = compute_all_derived_landmarks(mesh, lms, config)
+    derived_flat = {n: d["position"] for n, d in derived.items()}
+
+    def mock_geodesic(pt_a, pt_b):
+        dist = float(np.linalg.norm(pt_a - pt_b))
+        return dist, np.array([pt_a, pt_b])
+
+    records = compute_configured_measurements(
+        mesh, lms, derived_flat, config["measurements"], mock_geodesic, config=config,
+    )
+    waist_arcs = {r.name: r.value_mm for r in records if r.method == "arc_length"}
+    assert "WaistArcA_Left" in waist_arcs
+    assert "WaistArcB_Left" in waist_arcs
+    assert "BustArcC_Left" in waist_arcs
+    assert "BustArcD_Left" in waist_arcs
+    for name, val in waist_arcs.items():
+        assert 10 < val < 500, f"{name} = {val:.1f}mm out of expected range"

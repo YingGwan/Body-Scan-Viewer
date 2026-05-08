@@ -16,16 +16,20 @@ main.py (Entry)
   │     │    load_sizestream, load_caesar, run_registration,
   │     │    save_registered, compare_landmark_distances,
   │     │    compute_and_show_geodesic, show_geodesic_endpoints,
-  │     │    reset_subject
+  │     │    compute_derived_landmarks, compute_shoulder_measurements,
+  │     │    export_results_to_excel, anonymize_face,
+  │     │    register_waist_contours, reset_subject
   │     │
   │     ├── data_loader.py → scan_data_folders, parse XLSX/LND, coordinate diagnosis
   │     ├── unit_utils.py → MeshUnitContext, m↔mm conversion
   │     ├── registration.py → ICP pipeline (uses open3d, Point-to-Plane)
   │     ├── geodesic_utils.py → edge graph, potpourri3d solver, Dijkstra fallback
-  │     └── colorBar.py → distance → RGB mapping (piecewise linear: blue→cyan→green→yellow→red)
+  │     ├── colorBar.py → distance → RGB mapping (piecewise linear: blue→cyan→green→yellow→red)
+  │     ├── derived_landmarks.py → YAML config, barycentric coords, init methods, measurements
+  │     └── face_anonymization.py → Open3D proxy simplification, boundary falloff
   │
   └── gui_panel.py → UI_Menu class (View)
-        ImGui panels A-D, per-frame callback
+        ImGui panels A-F, per-frame callback
 ```
 
 ## 运行时单位
@@ -42,11 +46,16 @@ CAESAR mesh 在 `load_caesar()` 时立即归一化到 mm。
 4. `run_registration()`: ICP → registered mesh + transform
 5. `compare_landmark_distances()`: distance heatmap
 6. `compute_and_show_geodesic()`: surface path
-7. `reset_subject()`: 清空全部状态，回到步骤 2
+7. `compute_derived_landmarks()`: YAML 加载 → init_method → barycentric coords → Polyscope clouds
+8. `compute_shoulder_measurements()`: geodesic + Y-projection measurements
+9. `anonymize_face()`: Open3D proxy → vertex smoothing
+10. `export_results_to_excel()`: V3 results to `{sid}_v3_results.xlsx`
+11. `reset_subject()`: 清空全部状态（含 derived landmarks + face anon），回到步骤 2
 
 ## 配置系统
 
 - `project_config.json`: 数据路径、ICP 参数、距离设置（per dataset）
 - `render_config.json`: 视觉外观（shared across datasets）
-- 每个 key 必须有 `key__comment`
-- 启动时严格 schema 验证
+- `config/derived_landmarks.yaml`: derived landmark + measurement 定义
+- JSON: 每个 key 必须有 `key__comment`，启动时严格 schema 验证
+- YAML: 由 `derived_landmarks.py` 懒加载，PyYAML 不保留注释

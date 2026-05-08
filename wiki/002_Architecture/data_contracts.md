@@ -111,17 +111,78 @@ AppConfig
         └── quality: RegistrationQualityConfig
 ```
 
-## AnonymizationRegion `[PLANNED]`
+## MeasurementRecord `[CODE]`
 
-- landmark_pair: [landmark_id_1, landmark_id_2]
-- plane_normal: [nx, ny, nz]
-- fitted_circle_center: [x, y, z]
-- fitted_circle_radius
-- projection_method: references settled
-- pymeshlab_filter: references settled
-- pre_anonymization_mesh_id
-- post_anonymization_mesh_id
-- preserved_landmarks: list of landmark IDs extracted before simplification
+来源：`derived_landmarks.py:MeasurementRecord` (dataclass)
+
+```python
+@dataclass
+class MeasurementRecord:
+    name: str               # e.g. "NeckFrontLeft_to_NeckFront"
+    family: str             # e.g. "Neck", "Shoulder", "Waist", "Thigh"
+    value_mm: float         # measured value in mm
+    method: str             # "geodesic", "arc_length", "euclidean", "y_projection"
+    source_landmarks: tuple # (from_name, to_name)
+```
+
+## FaceRegion `[CODE]`
+
+来源：`face_anonymization.py:FaceRegion` (dataclass)
+
+```python
+@dataclass
+class FaceRegion:
+    selected_vertices: np.ndarray   # bool mask (n_vertices,)
+    selected_faces: np.ndarray      # bool mask (n_faces,)
+    boundary_vertices: np.ndarray   # bool mask (n_vertices,)
+```
+
+## FaceAnonymizationResult `[CODE]`
+
+来源：`face_anonymization.py:FaceAnonymizationResult` (dataclass)
+
+```python
+@dataclass
+class FaceAnonymizationResult:
+    mesh: trimesh.Trimesh             # modified mesh (topology unchanged, vertices moved)
+    selected_vertices: np.ndarray     # bool mask
+    selected_face_count: int
+    selected_vertex_count: int
+    boundary_vertex_count: int
+    proxy_face_count: int             # faces in decimated proxy
+    max_displacement_mm: float
+    mean_displacement_mm: float
+    before_boundary_edges: tuple      # (boundary, nonmanifold) before
+    after_boundary_edges: tuple       # (boundary, nonmanifold) after
+    before_components: list           # component face counts before
+    after_components: list            # component face counts after
+```
+
+## DerivedLandmarkConfig (YAML dict) `[CODE]`
+
+来源：`config/derived_landmarks.yaml`，由 `derived_landmarks.py:load_derived_landmark_config()` 加载验证
+
+```yaml
+version: 1
+landmark_name_map:          # canonical → dataset-specific name mapping
+  NeckLeft: "Mid Neck Left"
+  ...
+landmarks:
+  NeckFrontLeft:            # landmark ID
+    triangle: [A, B, C]    # 3 reference landmarks for barycentric coords
+    weights: [α, β, γ]     # null = use init_method; non-null = use saved weights
+    init_method: "plane_intersection"  # registered init method name
+    init_params: {...}      # method-specific parameters
+    family: "Neck"          # grouping for UI and measurement
+measurements:
+  MeasurementName:
+    type: "geodesic"        # "geodesic" | "arc_length" | "euclidean"
+    from: LandmarkA         # source landmark (original or derived)
+    to: LandmarkB           # target landmark
+    family: "Neck"
+    also_output_y_projection: false  # if true, also output |y1-y2|
+    plane_landmark: ...     # (arc_length only) landmark defining cut plane
+```
 
 ## SlicePlane `[PLANNED]`
 
@@ -135,13 +196,4 @@ AppConfig
 - source_plane: SlicePlane reference
 - contour_points: ordered list of [x, y, z]
 - is_closed: bool
-- mesh_id
-
-## MeasurementResult `[PLANNED]`
-
-- measurement_name: references settled 度量公式
-- value
-- unit
-- input_landmarks: list of landmark IDs
-- algorithm: references settled
 - mesh_id

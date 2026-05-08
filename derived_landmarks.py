@@ -209,12 +209,128 @@ def init_plane_intersection(mesh, landmark_dict, params, config=None):
 
 @_register_init("arc_length_ratio")
 def init_arc_length_ratio(mesh, landmark_dict, params, config=None):
-    raise NotImplementedError("Planned for Neck/Waist module")
+    start_name = params["start_landmark"]
+    end_name = params["end_landmark"]
+    ratio = params.get("ratio", 0.5)
+    plane_landmark = params.get("plane_landmark", start_name)
+
+    if config:
+        start_name = resolve_landmark_name(start_name, config)
+        end_name = resolve_landmark_name(end_name, config)
+        plane_landmark = resolve_landmark_name(plane_landmark, config)
+
+    start_pt = np.asarray(landmark_dict[start_name])
+    end_pt = np.asarray(landmark_dict[end_name])
+    plane_pt = np.asarray(landmark_dict[plane_landmark])
+
+    plane_y = float(plane_pt[1])
+    path3d = mesh.section(plane_origin=[0, plane_y, 0], plane_normal=[0, 1, 0])
+    if path3d is None or len(path3d.entities) == 0:
+        raise ValueError(f"Transverse section at Y={plane_y:.1f} did not intersect mesh")
+
+    path2d, to_3d = path3d.to_planar()
+    if not path2d.polygons_full:
+        raise ValueError(f"No closed polygons from transverse section at Y={plane_y:.1f}")
+    ring = max(path2d.polygons_full, key=lambda p: p.area).exterior
+
+    from shapely.geometry import Point
+    inv_3d = np.linalg.inv(to_3d)
+
+    def to_2d(pt3d):
+        h = np.append(np.asarray(pt3d), 1.0) @ inv_3d.T
+        return h[:2] / h[3] if abs(h[3]) > 1e-10 else h[:2]
+
+    start_2d = to_2d(start_pt)
+    end_2d = to_2d(end_pt)
+
+    pos_start = ring.project(Point(start_2d))
+    pos_end = ring.project(Point(end_2d))
+
+    arc_forward = pos_end - pos_start
+    if arc_forward < 0:
+        arc_forward += ring.length
+    arc_backward = ring.length - arc_forward
+    if arc_forward <= arc_backward:
+        target_pos = pos_start + ratio * arc_forward
+    else:
+        target_pos = pos_start - ratio * arc_backward
+    target_pos = target_pos % ring.length
+
+    pt_2d = ring.interpolate(target_pos)
+    pt_3d_h = np.array([pt_2d.x, pt_2d.y, 0.0, 1.0]) @ to_3d.T
+    return (pt_3d_h[:3] / pt_3d_h[3] if abs(pt_3d_h[3]) > 1e-10 else pt_3d_h[:3]).copy()
 
 
 @_register_init("three_plane_intersection")
 def init_three_plane_intersection(mesh, landmark_dict, params, config=None):
-    raise NotImplementedError("Planned for Neck/Waist module")
+    apex_name = params["apex_landmark"]
+    waist_plane_name = params["waist_plane_landmark"]
+    bust_front_name = params["bust_front_landmark"]
+    bust_side_name = params["bust_side_landmark"]
+
+    if config:
+        apex_name = resolve_landmark_name(apex_name, config)
+        waist_plane_name = resolve_landmark_name(waist_plane_name, config)
+        bust_front_name = resolve_landmark_name(bust_front_name, config)
+        bust_side_name = resolve_landmark_name(bust_side_name, config)
+
+    apex = np.asarray(landmark_dict[apex_name])
+    waist_ref = np.asarray(landmark_dict[waist_plane_name])
+    bust_front = np.asarray(landmark_dict[bust_front_name])
+    bust_side = np.asarray(landmark_dict[bust_side_name])
+
+    plane_y = float(waist_ref[1])
+    apex_proj = np.array([apex[0], plane_y, apex[2]])
+    bf_proj = np.array([bust_front[0], plane_y, bust_front[2]])
+    bs_proj = np.array([bust_side[0], plane_y, bust_side[2]])
+
+    path3d = mesh.section(plane_origin=[0, plane_y, 0], plane_normal=[0, 1, 0])
+    if path3d is None or len(path3d.entities) == 0:
+        raise ValueError(f"Transverse section at Y={plane_y:.1f} did not intersect mesh")
+
+    path2d, to_3d = path3d.to_planar()
+    if not path2d.polygons_full:
+        raise ValueError(f"No closed polygons from transverse section at Y={plane_y:.1f}")
+    ring = max(path2d.polygons_full, key=lambda p: p.area).exterior
+
+    from shapely.geometry import Point, LineString
+    inv_3d = np.linalg.inv(to_3d)
+
+    def to_2d(pt3d):
+        h = np.append(np.asarray(pt3d), 1.0) @ inv_3d.T
+        return h[:2] / h[3] if abs(h[3]) > 1e-10 else h[:2]
+
+    apex_2d = to_2d(apex_proj)
+    bf_2d = to_2d(bf_proj)
+    bs_2d = to_2d(bs_proj)
+
+    d_2d = bs_2d - bf_2d
+    perp_2d = np.array([-d_2d[1], d_2d[0]])
+    perp_len = np.linalg.norm(perp_2d)
+    if perp_len < 1e-10:
+        raise ValueError("BustFront and BustSide have same 2D projection")
+    perp_2d = perp_2d / perp_len
+
+    ray_line = LineString([
+        apex_2d - 500.0 * perp_2d,
+        apex_2d + 500.0 * perp_2d,
+    ])
+    intersection = ray_line.intersection(ring)
+
+    if intersection.is_empty:
+        hit = ring.interpolate(ring.project(Point(apex_2d)))
+    elif intersection.geom_type == "Point":
+        hit = intersection
+    else:
+        candidates = [g for g in intersection.geoms if g.geom_type == "Point"]
+        if not candidates:
+            hit = ring.interpolate(ring.project(Point(apex_2d)))
+        else:
+            apex_pt = Point(apex_2d)
+            hit = min(candidates, key=lambda p: apex_pt.distance(p))
+
+    pt_3d_h = np.array([hit.x, hit.y, 0.0, 1.0]) @ to_3d.T
+    return (pt_3d_h[:3] / pt_3d_h[3] if abs(pt_3d_h[3]) > 1e-10 else pt_3d_h[:3]).copy()
 
 
 # =========================================================================
@@ -262,6 +378,37 @@ def compute_all_derived_landmarks(mesh, landmark_dict, config):
 # Measurement computation
 # =========================================================================
 
+def _compute_arc_length(mesh, pt_a, pt_b, plane_landmark_pt):
+    plane_y = float(plane_landmark_pt[1])
+    path3d = mesh.section(plane_origin=[0, plane_y, 0], plane_normal=[0, 1, 0])
+    if path3d is None or len(path3d.entities) == 0:
+        raise ValueError(f"Transverse section at Y={plane_y:.1f} did not intersect mesh")
+
+    path2d, to_3d = path3d.to_planar()
+    if not path2d.polygons_full:
+        raise ValueError(f"No closed polygons from transverse section at Y={plane_y:.1f}")
+
+    from shapely.geometry import Point
+    inv_3d = np.linalg.inv(to_3d)
+
+    def to_2d(pt3d):
+        h = np.append(np.asarray(pt3d), 1.0) @ inv_3d.T
+        return h[:2] / h[3] if abs(h[3]) > 1e-10 else h[:2]
+
+    mid_2d = Point(to_2d((pt_a + pt_b) / 2.0))
+    ring = min(
+        (p.exterior for p in path2d.polygons_full),
+        key=lambda r: r.distance(mid_2d),
+    )
+
+    pos_a = ring.project(Point(to_2d(pt_a)))
+    pos_b = ring.project(Point(to_2d(pt_b)))
+    arc = abs(pos_b - pos_a)
+    if arc > ring.length / 2:
+        arc = ring.length - arc
+    return arc
+
+
 def compute_configured_measurements(mesh, landmark_dict, derived_dict, measurements_config, geodesic_fn, config=None):
     combined = dict(landmark_dict)
     combined.update(derived_dict)
@@ -293,5 +440,24 @@ def compute_configured_measurements(mesh, landmark_dict, derived_dict, measureme
                     name=f"{name}_Y", family=family, value_mm=y_proj,
                     method="y_projection", source_landmarks=src,
                 ))
+        elif m_config["type"] == "arc_length":
+            plane_lm_name = m_config.get("plane_landmark", from_name)
+            if config:
+                plane_lm_name = resolve_landmark_name(plane_lm_name, config)
+            if plane_lm_name in combined:
+                plane_pt = np.asarray(combined[plane_lm_name])
+            else:
+                plane_pt = pt_a
+            arc_mm = _compute_arc_length(mesh, pt_a, pt_b, plane_pt)
+            records.append(MeasurementRecord(
+                name=name, family=family, value_mm=arc_mm,
+                method="arc_length", source_landmarks=src,
+            ))
+        elif m_config["type"] == "euclidean":
+            dist = float(np.linalg.norm(pt_a - pt_b))
+            records.append(MeasurementRecord(
+                name=name, family=family, value_mm=dist,
+                method="euclidean", source_landmarks=src,
+            ))
 
     return records
