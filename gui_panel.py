@@ -571,16 +571,26 @@ class UI_Menu:
             psim.TreePop()
 
         psim.Separator()
-        if self._geo_needs_refresh:
-            if psim.Button("Refresh Geodesics"):
-                self._refresh_geodesics()
+        if psim.Button("Apply Weights"):
+            self._apply_all_weights()
+        psim.SameLine()
+        if psim.Button("Save to YAML"):
+            self._save_weights()
+        psim.SameLine()
+        if psim.Button("Load from YAML"):
+            self._load_weights_from_yaml()
 
-        if self._weights_unsaved:
-            if psim.Button("Save Weights to YAML"):
-                self._save_weights()
-
+        if psim.Button("Reset to Default"):
+            self._reset_to_default()
+        psim.SameLine()
+        if psim.Button("Refresh Geodesics"):
+            self._refresh_geodesics()
+        psim.SameLine()
         if psim.Button("Export Excel"):
             self._export_excel()
+
+        if self._weights_unsaved:
+            _warn("Weights modified (unsaved)")
 
     def _render_landmark_sliders(self, lm_name, info):
         c = self.content
@@ -664,18 +674,100 @@ class UI_Menu:
         except Exception as e:
             self._set_status(f"Geodesic refresh failed: {e}", "err")
 
+    def _apply_all_weights(self):
+        c = self.content
+        try:
+            for lm_name, w in self._derived_weights.items():
+                cfg = c.derived_lm_config["landmarks"][lm_name]
+                from derived_landmarks import resolve_landmark_names
+                tri_resolved = resolve_landmark_names(cfg["triangle"], c.derived_lm_config)
+                A = np.asarray(c.ss_lm_dict[tri_resolved[0]])
+                B = np.asarray(c.ss_lm_dict[tri_resolved[1]])
+                C = np.asarray(c.ss_lm_dict[tri_resolved[2]])
+                P_bary = from_barycentric(w[0], w[1], w[2], A, B, C)
+                P_surface = project_to_mesh(P_bary, c.mesh_ss)
+                self._derived_positions[lm_name] = P_surface
+                c.derived_lm_dict[lm_name]["position"] = P_surface
+                c.derived_lm_dict[lm_name]["weights"] = tuple(w)
+
+            families = {}
+            for n, d in c.derived_lm_dict.items():
+                families.setdefault(d["family"], []).append(d["position"])
+            for family, positions in families.items():
+                try:
+                    ps.register_point_cloud(
+                        f"Derived_{family}", np.array(positions),
+                        color=[0.8, 0.1, 0.1], enabled=True, radius=0.005,
+                    )
+                except Exception:
+                    pass
+            self._update_y_projections()
+            self._geo_needs_refresh = True
+            self._set_status("Weights applied", "ok")
+        except Exception as e:
+            self._set_status(f"Apply failed: {e}", "err")
+
     def _save_weights(self):
         c = self.content
         yaml_path = c._DERIVED_YAML
         try:
-            for lm_name in self._derived_dirty:
-                w = self._derived_weights[lm_name]
+            for lm_name, w in self._derived_weights.items():
                 save_weights_to_yaml(yaml_path, lm_name, w)
             self._derived_dirty.clear()
             self._weights_unsaved = False
-            self._set_status("Weights saved to YAML", "ok")
+            self._set_status("All weights saved to YAML", "ok")
         except Exception as e:
             self._set_status(f"Save failed: {e}", "err")
+
+    def _load_weights_from_yaml(self):
+        c = self.content
+        try:
+            from derived_landmarks import load_derived_landmark_config
+            c.derived_lm_config = load_derived_landmark_config(str(c._DERIVED_YAML))
+            for lm_name, lm_cfg in c.derived_lm_config["landmarks"].items():
+                w = lm_cfg.get("weights")
+                if w is not None and lm_name in self._derived_weights:
+                    self._derived_weights[lm_name] = list(w)
+            self._apply_all_weights()
+            self._derived_dirty.clear()
+            self._weights_unsaved = False
+            self._set_status("Weights loaded from YAML", "ok")
+        except Exception as e:
+            self._set_status(f"Load failed: {e}", "err")
+
+    def _reset_to_default(self):
+        c = self.content
+        try:
+            from derived_landmarks import compute_all_derived_landmarks, load_derived_landmark_config
+            c.derived_lm_config = load_derived_landmark_config(str(c._DERIVED_YAML))
+            for lm_name in c.derived_lm_config["landmarks"]:
+                c.derived_lm_config["landmarks"][lm_name]["weights"] = None
+            c.derived_lm_dict = compute_all_derived_landmarks(
+                c.mesh_ss, c.ss_lm_dict, c.derived_lm_config,
+            )
+            self._derived_weights = {
+                n: list(info["weights"]) for n, info in c.derived_lm_dict.items()
+            }
+            self._derived_positions = {
+                n: info["position"].copy() for n, info in c.derived_lm_dict.items()
+            }
+            families = {}
+            for n, d in c.derived_lm_dict.items():
+                families.setdefault(d["family"], []).append(d["position"])
+            for family, positions in families.items():
+                try:
+                    ps.register_point_cloud(
+                        f"Derived_{family}", np.array(positions),
+                        color=[0.8, 0.1, 0.1], enabled=True, radius=0.005,
+                    )
+                except Exception:
+                    pass
+            self._derived_dirty.clear()
+            self._weights_unsaved = True
+            self._geo_needs_refresh = True
+            self._set_status("Reset to init_method defaults (unsaved)", "ok")
+        except Exception as e:
+            self._set_status(f"Reset failed: {e}", "err")
 
     def _export_excel(self):
         c = self.content
