@@ -22,6 +22,9 @@ Design principles:
 import numpy as np
 import polyscope.imgui as psim
 from config_loader import APP_CONFIG
+import polyscope as ps
+from data_loader import PROCESSED_DIR
+from derived_landmarks import from_barycentric, project_to_mesh, save_weights_to_yaml
 
 
 # ==============================================================================
@@ -84,6 +87,16 @@ class UI_Menu:
         self._geo_len_str   = "--"
         self._geo_preview_key = None
 
+        # Panel E: Derived Landmarks
+        self._derived_computed = False
+        self._derived_weights = {}
+        self._derived_positions = {}
+        self._derived_dirty = set()
+        self._measurements_cache = {}
+        self._weights_unsaved = False
+        self._geo_needs_refresh = False
+        self._lock_sum = True
+
     # --------------------------------------------------------------------------
     # Combo list builder
     # --------------------------------------------------------------------------
@@ -142,6 +155,9 @@ class UI_Menu:
         if psim.TreeNode("D. Geodesic"):
             self._panel_geodesic()
             psim.TreePop()
+        if psim.TreeNode("E. Derived Landmarks"):
+            self._panel_derived()
+            psim.TreePop()
 
     # --------------------------------------------------------------------------
     # Panel: System (scan results overview)
@@ -194,6 +210,13 @@ class UI_Menu:
             self._geo_preview_key = None
             self._status_history.clear()
             self.color_max_mm = APP_CONFIG.distance.default_color_max_mm
+            self._derived_computed = False
+            self._derived_weights = {}
+            self._derived_positions = {}
+            self._derived_dirty = set()
+            self._measurements_cache = {}
+            self._weights_unsaved = False
+            self._geo_needs_refresh = False
 
         sid   = self._combo_ids[self.sel_idx]
         entry = self.content.catalog.subjects[sid]
@@ -439,3 +462,178 @@ class UI_Menu:
                 _ok(f"Length: {self._geo_len_str} mm  ({length_val/10:.1f} cm)")
             except ValueError:
                 pass
+
+    # --------------------------------------------------------------------------
+    # Panel E: Derived Landmarks
+    # --------------------------------------------------------------------------
+
+    def _panel_derived(self):
+        c = self.content
+
+        can_compute = c.mesh_ss is not None and bool(c.ss_lm_dict)
+        if not can_compute:
+            _warn("Load SizeStream mesh + landmarks first")
+            return
+
+        if psim.Button("Compute / Initialize"):
+            try:
+                c.compute_derived_landmarks()
+                c.compute_shoulder_measurements()
+                self._derived_computed = True
+                self._derived_weights = {
+                    name: list(info["weights"])
+                    for name, info in c.derived_lm_dict.items()
+                }
+                self._derived_positions = {
+                    name: info["position"].copy()
+                    for name, info in c.derived_lm_dict.items()
+                }
+                self._measurements_cache = {}
+                for r in c.measurement_results:
+                    self._measurements_cache.setdefault(r.name, {})[r.method] = r.value_mm
+                self._derived_dirty.clear()
+                self._weights_unsaved = False
+                self._geo_needs_refresh = False
+                self._set_status("Derived landmarks computed", "ok")
+            except Exception as e:
+                self._set_status(f"Derived landmarks failed: {e}", "err")
+                return
+
+        if not self._derived_computed:
+            return
+
+        psim.Separator()
+        psim.TextUnformatted("Armhole")
+        for lm_name, info in c.derived_lm_dict.items():
+            if info["family"] != "Armhole":
+                continue
+            if psim.TreeNode(lm_name):
+                self._render_landmark_sliders(lm_name, info)
+                psim.TreePop()
+
+        psim.Separator()
+        psim.TextUnformatted("Shoulder Measurements")
+        for meas_name, vals in self._measurements_cache.items():
+            geo_val = vals.get("geodesic", 0)
+            y_val = vals.get("y_projection", 0)
+            stale = " *" if self._geo_needs_refresh else ""
+            if geo_val > 0:
+                _ok(f"{meas_name}: geo {geo_val:.1f}mm  dY {y_val:.1f}mm{stale}")
+            elif y_val > 0:
+                psim.TextUnformatted(f"  {meas_name}: dY {y_val:.1f}mm")
+
+        psim.Separator()
+        if self._geo_needs_refresh:
+            if psim.Button("Refresh Geodesics"):
+                self._refresh_geodesics()
+
+        if self._weights_unsaved:
+            if psim.Button("Save Weights to YAML"):
+                self._save_weights()
+
+        if psim.Button("Export Excel"):
+            self._export_excel()
+
+    def _render_landmark_sliders(self, lm_name, info):
+        c = self.content
+        w = self._derived_weights[lm_name]
+        cfg = c.derived_lm_config["landmarks"][lm_name]
+        tri_names = cfg["triangle"]
+
+        changed = False
+        for i, (label, tri_name) in enumerate(zip(["a", "b", "g"], tri_names)):
+            ch, w[i] = psim.SliderFloat(
+                f"{label} ({tri_name})##{lm_name}{i}", w[i], v_min=-2.0, v_max=2.0
+            )
+            if ch:
+                changed = True
+
+        _, self._lock_sum = psim.Checkbox(f"Lock a+b+g=1##{lm_name}", self._lock_sum)
+
+        if changed:
+            if self._lock_sum:
+                w[2] = 1.0 - w[0] - w[1]
+            self._derived_weights[lm_name] = w
+            A = np.asarray(c.ss_lm_dict[tri_names[0]])
+            B = np.asarray(c.ss_lm_dict[tri_names[1]])
+            C = np.asarray(c.ss_lm_dict[tri_names[2]])
+            P_bary = from_barycentric(w[0], w[1], w[2], A, B, C)
+            P_surface = project_to_mesh(P_bary, c.mesh_ss)
+            self._derived_positions[lm_name] = P_surface
+            c.derived_lm_dict[lm_name]["position"] = P_surface
+            c.derived_lm_dict[lm_name]["weights"] = tuple(w)
+
+            family = info["family"]
+            positions = [
+                d["position"] for n, d in c.derived_lm_dict.items()
+                if d["family"] == family
+            ]
+            try:
+                ps.register_point_cloud(
+                    f"Derived_{family}", np.array(positions),
+                    color=[0.2, 0.4, 0.9], enabled=True, radius=0.003,
+                )
+            except Exception:
+                pass
+
+            self._update_y_projections()
+            self._derived_dirty.add(lm_name)
+            self._weights_unsaved = True
+            self._geo_needs_refresh = True
+
+        pos = self._derived_positions[lm_name]
+        psim.TextUnformatted(f"  Pos: [{pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f}]")
+
+    def _update_y_projections(self):
+        c = self.content
+        combined = dict(c.ss_lm_dict)
+        combined.update({n: d["position"] for n, d in c.derived_lm_dict.items()})
+        config = c.derived_lm_config
+        for meas_name, m_config in config["measurements"].items():
+            if m_config.get("also_output_y_projection"):
+                pt_a = combined.get(m_config["from"])
+                pt_b = combined.get(m_config["to"])
+                if pt_a is not None and pt_b is not None:
+                    y_proj = abs(float(pt_a[1]) - float(pt_b[1]))
+                    self._measurements_cache.setdefault(meas_name, {})["y_projection"] = y_proj
+                    self._measurements_cache.setdefault(
+                        f"{meas_name}_Y", {}
+                    )["y_projection"] = y_proj
+
+    def _refresh_geodesics(self):
+        c = self.content
+        try:
+            c.compute_shoulder_measurements()
+            self._measurements_cache = {}
+            for r in c.measurement_results:
+                self._measurements_cache.setdefault(r.name, {})[r.method] = r.value_mm
+            self._geo_needs_refresh = False
+            self._set_status("Geodesics refreshed", "ok")
+        except Exception as e:
+            self._set_status(f"Geodesic refresh failed: {e}", "err")
+
+    def _save_weights(self):
+        c = self.content
+        yaml_path = c._DERIVED_YAML
+        try:
+            for lm_name in self._derived_dirty:
+                w = self._derived_weights[lm_name]
+                save_weights_to_yaml(yaml_path, lm_name, w)
+            self._derived_dirty.clear()
+            self._weights_unsaved = False
+            self._set_status("Weights saved to YAML", "ok")
+        except Exception as e:
+            self._set_status(f"Save failed: {e}", "err")
+
+    def _export_excel(self):
+        c = self.content
+        if not c.measurement_results:
+            self._set_status("No measurements to export", "warn")
+            return
+        sid = c.current_subject or "unknown"
+        out_path = str(PROCESSED_DIR / f"{sid}_v3_results.xlsx")
+        try:
+            c.export_results_to_excel(out_path)
+            self._set_status(f"Exported to {out_path}", "ok")
+        except Exception as e:
+            self._set_status(f"Export failed: {e}", "err")
