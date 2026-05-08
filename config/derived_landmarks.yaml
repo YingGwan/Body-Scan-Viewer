@@ -85,6 +85,64 @@ landmarks:
 
 measurements:
 
+  # Neck geodesics: each new neck landmark connected to its two source landmarks
+  NeckFrontLeft_to_NeckFront:
+    type: geodesic
+    from: NeckFrontLeft
+    to: NeckFront
+    family: Neck
+    also_output_y_projection: false
+
+  NeckFrontLeft_to_NeckLeft:
+    type: geodesic
+    from: NeckFrontLeft
+    to: NeckLeft
+    family: Neck
+    also_output_y_projection: false
+
+  NeckFrontRight_to_NeckFront:
+    type: geodesic
+    from: NeckFrontRight
+    to: NeckFront
+    family: Neck
+    also_output_y_projection: false
+
+  NeckFrontRight_to_NeckRight:
+    type: geodesic
+    from: NeckFrontRight
+    to: NeckRight
+    family: Neck
+    also_output_y_projection: false
+
+  NeckBackLeft_to_NeckBack:
+    type: geodesic
+    from: NeckBackLeft
+    to: NeckBack
+    family: Neck
+    also_output_y_projection: false
+
+  NeckBackLeft_to_NeckLeft:
+    type: geodesic
+    from: NeckBackLeft
+    to: NeckLeft
+    family: Neck
+    also_output_y_projection: false
+
+  NeckBackRight_to_NeckBack:
+    type: geodesic
+    from: NeckBackRight
+    to: NeckBack
+    family: Neck
+    also_output_y_projection: false
+
+  NeckBackRight_to_NeckRight:
+    type: geodesic
+    from: NeckBackRight
+    to: NeckRight
+    family: Neck
+    also_output_y_projection: false
+
+  # Shoulder geodesics
   MidShoulderToApexLeft:
     type: geodesic
     from: "Mid Shoulder Left"

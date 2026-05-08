@@ -102,10 +102,11 @@ def test_compute_shoulder_measurements(loaded_content):
     if not vc.derived_lm_dict:
         vc.compute_derived_landmarks()
     vc.compute_shoulder_measurements()
-    assert len(vc.measurement_results) >= 8
+    # 8 neck geodesics + 4 shoulder geodesics + 4 shoulder Y projections = 16
+    assert len(vc.measurement_results) >= 16
     geo_results = [r for r in vc.measurement_results if r.method == "geodesic"]
     y_results = [r for r in vc.measurement_results if r.method == "y_projection"]
-    assert len(geo_results) == 4
+    assert len(geo_results) == 12  # 8 neck + 4 shoulder
     assert len(y_results) == 4
     for r in geo_results:
         assert r.value_mm > 0

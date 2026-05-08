@@ -167,12 +167,13 @@ class VisContent:
             "CAESAR_Landmarks", "CAESAR_Landmarks_Registered",
             "Landmark_Errors", "Geodesic_Path", "Geo_Endpoints",
             "Distance_to_CAESAR",
-            # V3 derived landmarks
-            "Ref_Triangle_Vertices", "Derived_Armhole",
+            # V3 derived landmarks (static)
+            "Ref_Triangle_Vertices", "Derived_Armhole", "Derived_Neck",
             "Armhole_Section_L", "Armhole_Section_R",
-            "Geo_MidShoulderToApexLeft", "Geo_MidShoulderToApexRight",
-            "Geo_ApexToLowerBustLeft", "Geo_ApexToLowerBustRight",
         ]
+        if self.derived_lm_config and "measurements" in self.derived_lm_config:
+            for mname in self.derived_lm_config["measurements"]:
+                known_structures.append(f"Geo_{mname}")
         for name in known_structures:
             try:
                 if ps.has_surface_mesh(name):
@@ -652,7 +653,12 @@ class VisContent:
                 if path_verts is not None and len(path_verts) >= 2:
                     n = len(path_verts)
                     edges = np.array([[i, i + 1] for i in range(n - 1)])
-                    color = [0.2, 0.8, 0.3] if "MidShoulder" in r.name else [0.2, 0.7, 0.7]
+                    if r.family == "Neck":
+                        color = [0.9, 0.2, 0.7]
+                    elif "MidShoulder" in r.name:
+                        color = [0.2, 0.8, 0.3]
+                    else:
+                        color = [0.2, 0.7, 0.7]
                     try:
                         ps.register_curve_network(
                             f"Geo_{r.name}", path_verts, edges,
