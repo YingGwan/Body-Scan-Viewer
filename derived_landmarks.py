@@ -87,3 +87,66 @@ def to_barycentric(P, A, B, C):
 def project_to_mesh(point, mesh):
     closest, _, _ = trimesh.proximity.closest_point(mesh, [np.asarray(point)])
     return closest[0]
+
+
+# =========================================================================
+# Init methods
+# =========================================================================
+
+INIT_METHODS = {}
+
+
+def _register_init(name):
+    def decorator(fn):
+        INIT_METHODS[name] = fn
+        return fn
+    return decorator
+
+
+@_register_init("contour_z_extremum")
+def init_contour_z_extremum(mesh, landmark_dict, params):
+    lm_names = params["plane_landmarks"]
+    p0 = np.asarray(landmark_dict[lm_names[0]])
+    p1 = np.asarray(landmark_dict[lm_names[1]])
+
+    origin = (p0 + p1) / 2.0
+    direction = p1 - p0
+    direction = direction / np.linalg.norm(direction)
+    x_axis = np.array([1.0, 0.0, 0.0])
+    normal = np.cross(direction, x_axis)
+    norm_len = np.linalg.norm(normal)
+    if norm_len < 1e-10:
+        raise ValueError(f"Plane landmarks {lm_names} are parallel to X-axis, cannot compute normal")
+    normal = normal / norm_len
+
+    path3d = mesh.section(plane_origin=origin, plane_normal=normal)
+    if path3d is None or len(path3d.entities) == 0 or not path3d.is_closed:
+        raise ValueError(f"Plane did not intersect mesh for landmarks {lm_names}")
+
+    largest_entity = max(path3d.entities, key=lambda e: len(e.discrete(path3d.vertices)))
+    contour_pts = largest_entity.discrete(path3d.vertices)
+
+    extremum = params.get("extremum", "max")
+    if extremum == "max":
+        idx = np.argmax(contour_pts[:, 2])
+    elif extremum == "min":
+        idx = np.argmin(contour_pts[:, 2])
+    else:
+        raise ValueError(f"Unknown extremum type: {extremum}")
+
+    return contour_pts[idx].copy()
+
+
+@_register_init("plane_intersection")
+def init_plane_intersection(mesh, landmark_dict, params):
+    raise NotImplementedError("Planned for Neck/Waist module")
+
+
+@_register_init("arc_length_ratio")
+def init_arc_length_ratio(mesh, landmark_dict, params):
+    raise NotImplementedError("Planned for Neck/Waist module")
+
+
+@_register_init("three_plane_intersection")
+def init_three_plane_intersection(mesh, landmark_dict, params):
+    raise NotImplementedError("Planned for Neck/Waist module")
