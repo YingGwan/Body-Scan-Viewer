@@ -664,7 +664,8 @@ class UI_Menu:
 
     def _apply_single_weight(self, lm_name, w, info):
         c = self.content
-        from derived_landmarks import resolve_landmark_names
+        from derived_landmarks import resolve_landmark_names, resolve_landmark_name
+        from geodesic_utils import compute_geodesic
         cfg = c.derived_lm_config["landmarks"][lm_name]
         tri_resolved = resolve_landmark_names(cfg["triangle"], c.derived_lm_config)
         A = np.asarray(c.ss_lm_dict[tri_resolved[0]])
@@ -680,7 +681,31 @@ class UI_Menu:
         self._update_y_projections()
         self._derived_dirty.add(lm_name)
         self._weights_unsaved = True
-        self._geo_needs_refresh = True
+
+        combined = dict(c.ss_lm_dict)
+        combined.update({n: d["position"] for n, d in c.derived_lm_dict.items()})
+        for mname, mcfg in c.derived_lm_config["measurements"].items():
+            from_r = resolve_landmark_name(mcfg["from"], c.derived_lm_config)
+            to_r = resolve_landmark_name(mcfg["to"], c.derived_lm_config)
+            if lm_name not in (mcfg["from"], mcfg["to"], from_r, to_r):
+                continue
+            pt_a = np.asarray(combined[from_r])
+            pt_b = np.asarray(combined[to_r])
+            length, path_verts = compute_geodesic(
+                c.ss_edge_graph, c.mesh_ss.vertices, pt_a, pt_b,
+                kdtree=c.ss_kdtree, exact_solver=c.ss_geodesic_solver,
+            )
+            self._measurements_cache.setdefault(mname, {})["geodesic"] = length
+            if path_verts is not None and len(path_verts) >= 2:
+                n = len(path_verts)
+                edges = np.array([[i, i + 1] for i in range(n - 1)])
+                color = [0.9, 0.2, 0.7] if mcfg.get("family") == "Neck" else [0.2, 0.8, 0.3]
+                try:
+                    ps.register_curve_network(
+                        f"Geo_{mname}", path_verts, edges, color=color, radius=0.001,
+                    )
+                except Exception:
+                    pass
 
     def _update_family_cloud(self, family):
         c = self.content
