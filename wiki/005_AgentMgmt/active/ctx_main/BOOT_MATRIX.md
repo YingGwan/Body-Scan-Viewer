@@ -17,4 +17,9 @@
 | 添加新 Polyscope 结构 | `rendering/design.md` 结构表; `geometry_backend.py:reset_subject()` known list | `gui_panel.py` |
 | 添加新测试 | `tests/` 目录现有测试参考 | 对应模块的 `design.md` |
 | 修改 Color 映射 | `measurements/design.md`; `colorBar.py` | `geometry_backend.py` |
+| V3 Derived Landmarks 开发 | `ctx_system_current`; `config/derived_landmarks.yaml`; `derived_landmarks.py` | `TODO/1-0508/V3_requirements_guide.md`; `TODO/1-0508/V3_feasibility_analysis.md` |
+| 新增 Derived Landmark | `derived_landmarks.py` INIT_METHODS; `config/derived_landmarks.yaml` | `docs/superpowers/specs/2026-05-08-shoulder-derived-landmarks-design.md` |
+| 新增 init_method | `derived_landmarks.py` 现有 init methods 签名 | `TODO/1-0508/trimesh_intersections_lab_report.md` |
+| Waist/Bust dart 开发 | `ctx_system_current` 待实现表; `settled.md` 度量公式 | `TODO/1-0508/V3_requirements_guide.md` Section 2 |
+| 重心坐标微调 | `gui_panel.py` Panel E; `config/derived_landmarks.yaml` | `derived_landmarks.py` from_barycentric/to_barycentric |
 | Docs audit | `TRUTH_LADDER` | all active ctx + architecture docs |
