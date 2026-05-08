@@ -96,6 +96,9 @@ class UI_Menu:
         self._weights_unsaved = False
         self._geo_needs_refresh = False
         self._lock_sum = True
+        self._show_global_lm = True
+        self._show_neck_lm = True
+        self._show_armhole_lm = True
 
     # --------------------------------------------------------------------------
     # Combo list builder
@@ -505,6 +508,35 @@ class UI_Menu:
 
         if not self._derived_computed:
             return
+
+        psim.Separator()
+        ch1, self._show_global_lm = psim.Checkbox("Show Global Landmarks", self._show_global_lm)
+        if ch1:
+            try:
+                if ps.has_point_cloud("SS_Landmarks"):
+                    ps.get_point_cloud("SS_Landmarks").set_enabled(self._show_global_lm)
+            except Exception:
+                pass
+
+        ch2, self._show_neck_lm = psim.Checkbox("Show Neck Derived", self._show_neck_lm)
+        if ch2:
+            try:
+                if ps.has_point_cloud("Derived_Neck"):
+                    ps.get_point_cloud("Derived_Neck").set_enabled(self._show_neck_lm)
+                for mname in (c.derived_lm_config or {}).get("measurements", {}):
+                    if c.derived_lm_config["measurements"][mname].get("family") == "Neck":
+                        if ps.has_curve_network(f"Geo_{mname}"):
+                            ps.get_curve_network(f"Geo_{mname}").set_enabled(self._show_neck_lm)
+            except Exception:
+                pass
+
+        ch3, self._show_armhole_lm = psim.Checkbox("Show Armhole Derived", self._show_armhole_lm)
+        if ch3:
+            try:
+                if ps.has_point_cloud("Derived_Armhole"):
+                    ps.get_point_cloud("Derived_Armhole").set_enabled(self._show_armhole_lm)
+            except Exception:
+                pass
 
         psim.Separator()
         psim.TextUnformatted("Armhole")
