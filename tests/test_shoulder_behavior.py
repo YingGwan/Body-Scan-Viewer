@@ -109,3 +109,21 @@ def test_compute_shoulder_measurements(loaded_content):
     for r in geo_results:
         assert r.value_mm > 0
         assert r.value_mm < 1000
+
+
+def test_export_to_excel(loaded_content, tmp_path):
+    vc = loaded_content
+    if not vc.derived_lm_dict:
+        vc.compute_derived_landmarks()
+    if not vc.measurement_results:
+        vc.compute_shoulder_measurements()
+    out = str(tmp_path / "test_export.xlsx")
+    vc.export_results_to_excel(out)
+    import openpyxl
+    wb = openpyxl.load_workbook(out)
+    assert "Landmarks" in wb.sheetnames
+    assert "Measurements" in wb.sheetnames
+    ws_lm = wb["Landmarks"]
+    assert ws_lm.max_row > 5
+    ws_m = wb["Measurements"]
+    assert ws_m.max_row > 1
